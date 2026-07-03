@@ -328,3 +328,294 @@ public class MainActivity extends Activity {
     private void tryAutoReconnectHeartDelayed() {
         if (hasSavedHeart()) mainHandler.postDelayed(() -> reconnectHeartInternal(false), 1400);
     }
+@SuppressLint("MissingPermission")
+    private void startHeartScan() {
+        requestBasicPermissionsIfNeeded();
+        if (!hasBlePermissions()) {
+            sendHeartState(getSavedHeartNameOrDefault(), false, "Bluetooth権限待ち", lastHeart, lastHeartBattery, "Bluetooth権限を許可してください");
+            return;
+        }
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
+            sendHeartState(getSavedHeartNameOrDefault(), false, "Bluetooth OFF", lastHeart, lastHeartBattery, "BluetoothをONにしてください");
+            return;
+        }
+        scanner = bluetoothAdapter.getBluetoothLeScanner();
+        if (scanner == null) {
+            sendHeartState(getSavedHeartNameOrDefault(), false, "スキャン不可", lastHeart, lastHeartBattery, "BLEスキャナーを開始できません");
+            return;
+        }
+        heartScanDevices.clear();
+        heartScanning = true;
+        sendHeartState(getSavedHeartNameOrDefault(), false, "心拍センサー検索中", lastHeart, lastHeartBattery, null);
+        try {
+            scanner.startScan(heartScanCallback);
+            bleHandler.postDelayed(() -> stopHeartScanAndShowDialog(), 9000);
+        } catch (Exception e) {
+            heartScanning = false;
+            sendHeartState(getSavedHeartNameOrDefault(), false, "スキャン失敗", lastHeart, lastHeartBattery, e.getMessage());
+        }
+    }
+
+    private final ScanCallback heartScanCallback = new ScanCallback() {
+        @SuppressLint("MissingPermission")
+        @Override public void onScanResult(int callbackType, ScanResult result) {
+            BluetoothDevice d = result == null ? null : result.getDevice();
+            if (d == null) return;
+            // 名前がキャッシュに無くても、スキャンレスポンス側(ScanRecord)に名前がある場合があるため
+            // ここでは弾かず全デバイスを候補に残す。表示名はsafeDeviceName/ScanRecordの両方を試す。
+            heartScanDevices.put(d.getAddress(), d);
+        }
+        @Override public void onScanFailed(int errorCode) {
+            heartScanning = false;
+            sendHeartState(getSavedHeartNameOrDefault(), false, "スキャン失敗", lastHeart, lastHeartBattery, "BLEスキャン失敗: " + errorCode);
+        }
+    };
+
+    @SuppressLint("MissingPermission")
+    private void stopHeartScanAndShowDialog() {
+        if (!heartScanning) return;
+        heartScanning = false;
+        try { if (scanner != null) scanner.stopScan(heartScanCallback); } catch (Exception ignored) {}
+        if (heartScanDevices.isEmpty()) {
+            sendHeartState(getSavedHeartNameOrDefault(), false, "見つかりません", lastHeart, lastHeartBattery, "心拍計・スマートウォッチを近くに置いて再検索してください");
+            return;
+        }
+        List<BluetoothDevice> sorted = new ArrayList<>(heartScanDevices.values());
+        sorted.sort((a, b) -> scoreHeartDevice(b) - scoreHeartDevice(a));
+        final List<BluetoothDevice> devices = sorted.size() > 20 ? sorted.subList(0, 20) : sorted;
+        String[] labels = new String[devices.size()];
+        for (int i = 0; i < devices.size(); i++) {
+            String n = safeDeviceName(devices.get(i));
+            labels[i] = (n.equals("名称なし") ? "（名称非公開の機器）" : n) + "\n" + devices.get(i).getAddress();
+        }
+        mainHandler.post(() -> new AlertDialog.Builder(this)
+                .setTitle("心拍センサーを選択")
+                .setItems(labels, (dialog, which) -> connectHeartDevice(devices.get(which)))
+                .setNegativeButton("キャンセル", (dialog, which) -> sendHeartState(getSavedHeartNameOrDefault(), false, "未接続", lastHeart, lastHeartBattery, null))
+                .show());
+    }
+
+    @SuppressLint("MissingPermission")
+    private int scoreHeartDevice(BluetoothDevice d) {
+        String n = safeDeviceName(d).toLowerCase();
+        int s = 0;
+        if (n.contains("amazfit") || n.contains("bip") || n.contains("gtr") || n.contains("gts") || n.contains("balance") || n.contains("active") || n.contains("cheetah") || n.contains("t-rex")) s += 100;
+        if (n.contains("mi band") || n.contains("miband") || n.contains("xiaomi")) s += 90;
+        if (n.contains("polar") || n.contains("garmin") || n.contains("wahoo") || n.contains("suunto") || n.contains("coros")) s += 90;
+        if (n.contains("heart") || n.contains("hr") || n.contains("watch") || n.contains("band")) s += 40;
+        if (!n.equals("名称なし")) s += 10;
+        return s;
+    }
+
+    @SuppressLint("MissingPermission")
+    private void connectHeartDevice(BluetoothDevice device) {
+        if (device == null) return;
+        disconnectHeartInternal(null);
+        heartDevice = device;
+        saveHeart(device);
+        sendHeartState(safeDeviceName(device), false, "接続中...", lastHeart, lastHeartBattery, null);
+        try { heartGatt = device.connectGatt(this, false, heartGattCallback); }
+        catch (Exception e) { sendHeartState(safeDeviceName(device), false, "接続失敗", lastHeart, lastHeartBattery, e.getMessage()); }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void reconnectHeartInternal(boolean userAction) {
+        requestBasicPermissionsIfNeeded();
+        if (!hasBlePermissions()) {
+            sendHeartState(getSavedHeartNameOrDefault(), false, "Bluetooth権限待ち", lastHeart, lastHeartBattery, "Bluetooth権限を許可してください");
+            return;
+        }
+        String addr = prefs.getString(KEY_HEART_ADDRESS, null);
+        if (addr == null || addr.isEmpty()) {
+            sendHeartState("未登録", false, "保存済みなし", lastHeart, lastHeartBattery, userAction ? "先に心拍センサーを登録してください" : null);
+            return;
+        }
+        try {
+            BluetoothDevice d = bluetoothAdapter.getRemoteDevice(addr);
+            connectHeartDevice(d);
+        } catch (Exception e) {
+            sendHeartState(getSavedHeartNameOrDefault(), false, "再接続失敗", lastHeart, lastHeartBattery, e.getMessage());
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void disconnectHeartInternal(String state) {
+        try { if (heartGatt != null) heartGatt.disconnect(); } catch (Exception ignored) {}
+        try { if (heartGatt != null) heartGatt.close(); } catch (Exception ignored) {}
+        heartGatt = null;
+        heartDevice = null;
+        if (state != null) sendHeartState(getSavedHeartNameOrDefault(), false, state, lastHeart, lastHeartBattery, null);
+    }
+
+    private final BluetoothGattCallback heartGattCallback = new BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
+        @Override public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                heartGatt = gatt;
+                heartDevice = gatt.getDevice();
+                saveHeart(heartDevice);
+                sendHeartState(safeDeviceName(heartDevice), true, "サービス確認中", lastHeart, lastHeartBattery, null);
+                try { gatt.discoverServices(); } catch (Exception e) { sendHeartState(safeDeviceName(heartDevice), false, "サービス確認失敗", lastHeart, lastHeartBattery, e.getMessage()); }
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                sendHeartState(getCurrentHeartName(), false, "未接続", lastHeart, lastHeartBattery, null);
+                try { gatt.close(); } catch (Exception ignored) {}
+                if (gatt == heartGatt) heartGatt = null;
+            }
+        }
+
+        @Override public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                sendHeartState(safeDeviceName(gatt.getDevice()), true, "接続に失敗しました", lastHeart, lastHeartBattery, "端末を近づけて、もう一度お試しください（詳細コード: " + status + "）");
+                return;
+            }
+            startHeartServices(gatt);
+        }
+
+        @Override public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            handleHeartCharacteristic(gatt, characteristic);
+        }
+
+        @Override public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            if (status == BluetoothGatt.GATT_SUCCESS) handleHeartCharacteristic(gatt, characteristic);
+        }
+    };
+
+    @SuppressLint("MissingPermission")
+    private void startHeartServices(BluetoothGatt gatt) {
+        lastHeartBattery = readUint8(gatt, UUID_BATTERY_SERVICE, UUID_BATTERY_LEVEL, lastHeartBattery);
+        boolean ok = subscribe(gatt, UUID_HEART_SERVICE, UUID_HEART_MEASUREMENT);
+        if (ok) sendHeartState(safeDeviceName(gatt.getDevice()), true, "接続中 / 心拍待ち", lastHeart, lastHeartBattery, null);
+        else sendHeartState(safeDeviceName(gatt.getDevice()), true, "接続済み / 心拍通知なし", lastHeart, lastHeartBattery, "この機種は本アプリ向けに心拍数を送信していない可能性があります（機種の仕様による場合があります）");
+    }
+
+    private void handleHeartCharacteristic(BluetoothGatt gatt, BluetoothGattCharacteristic c) {
+        UUID u = c.getUuid();
+        byte[] v = c.getValue();
+        if (v == null) return;
+        if (UUID_HEART_MEASUREMENT.equals(u)) parseHeartRate(gatt, v);
+        else if (UUID_BATTERY_LEVEL.equals(u) && v.length > 0) {
+            lastHeartBattery = v[0] & 0xff;
+            sendHeartState(trueName(gatt), true, lastHeart == null ? "接続中 / 心拍待ち" : "心拍受信中", lastHeart, lastHeartBattery, null);
+        }
+    }
+
+    private String trueName(BluetoothGatt gatt) {
+        return gatt == null || gatt.getDevice() == null ? getCurrentHeartName() : safeDeviceName(gatt.getDevice());
+    }
+
+    private void parseHeartRate(BluetoothGatt gatt, byte[] b) {
+        try {
+            if (b.length < 2) return;
+            int flags = u8(b, 0);
+            int hr = ((flags & 0x01) != 0 && b.length >= 3) ? u16(b, 1) : u8(b, 1);
+            if (hr < 25 || hr > 240) return;
+            lastHeart = hr;
+            sendHeartState(trueName(gatt), true, "心拍受信中", lastHeart, lastHeartBattery, null);
+        } catch (Exception e) {
+            sendHeartState(trueName(gatt), true, "心拍解析エラー", lastHeart, lastHeartBattery, e.getMessage());
+        }
+    }
+
+    public class NativeBikeBridge {
+        @JavascriptInterface public void pairBike() { mainHandler.post(() -> startBikeScan()); }
+        @JavascriptInterface public void reconnectBike() { mainHandler.post(() -> reconnectBikeInternal(true)); }
+        @JavascriptInterface public void disconnectBike() { mainHandler.post(() -> disconnectBikeInternal("切断しました")); }
+        @JavascriptInterface public void forgetBike() { mainHandler.post(() -> { disconnectBikeInternal("登録解除しました"); clearBike(); sendBikeState(false, "未登録", "登録解除しました", null, null, null, "未接続", null); }); }
+        @JavascriptInterface public void requestState() { mainHandler.post(() -> sendBikeState(isBikeConnected(), getCurrentBikeName(), isBikeConnected()?"接続中":(hasSavedBike()?"保存済み / 未接続":"未登録"), null, null, lastBattery, bikeType, null)); }
+    }
+
+    private boolean isBikeConnected() {
+        return bikeGatt != null && bikeDevice != null;
+    }
+
+    private String getCurrentBikeName() {
+        if (bikeDevice != null) return safeDeviceName(bikeDevice);
+        return getSavedBikeNameOrDefault();
+    }
+
+    @SuppressLint("MissingPermission")
+    private void startBikeScan() {
+        requestBasicPermissionsIfNeeded();
+        if (!hasBlePermissions()) {
+            sendBikeState(false, getSavedBikeNameOrDefault(), "Bluetooth権限待ち", null, null, lastBattery, bikeType, "Bluetooth権限を許可してください");
+            return;
+        }
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
+            sendBikeState(false, getSavedBikeNameOrDefault(), "Bluetooth OFF", null, null, lastBattery, bikeType, "BluetoothをONにしてください");
+            return;
+        }
+        scanner = bluetoothAdapter.getBluetoothLeScanner();
+        if (scanner == null) {
+            sendBikeState(false, getSavedBikeNameOrDefault(), "スキャン不可", null, null, lastBattery, bikeType, "BLEスキャナーを開始できません");
+            return;
+        }
+        scanDevices.clear();
+        scanning = true;
+        Toast.makeText(this, "センサー検索中。FITBOXを漕いで起こしてください", Toast.LENGTH_SHORT).show();
+        sendBikeState(false, getSavedBikeNameOrDefault(), "センサー検索中", null, null, lastBattery, bikeType, null);
+        try { scanner.stopScan(scanCallback); } catch (Exception ignored) {}
+        scanner.startScan(scanCallback);
+        bleHandler.postDelayed(() -> stopScanAndShowChoices(), 8000);
+    }
+
+    private final ScanCallback scanCallback = new ScanCallback() {
+        @Override public void onScanResult(int callbackType, ScanResult result) { addScanResult(result); }
+        @Override public void onBatchScanResults(List<ScanResult> results) { if (results != null) for (ScanResult r : results) addScanResult(r); }
+        @Override public void onScanFailed(int errorCode) {
+            scanning = false;
+            sendBikeState(false, getSavedBikeNameOrDefault(), "スキャン失敗", null, null, lastBattery, bikeType, "BLEスキャン失敗: " + errorCode);
+        }
+    };
+
+    @SuppressLint("MissingPermission")
+    private void addScanResult(ScanResult result) {
+        if (result == null || result.getDevice() == null) return;
+        BluetoothDevice d = result.getDevice();
+        String name = safeDeviceName(d);
+        String addr = d.getAddress();
+        if (addr == null) return;
+        // 名前なしも残すが、運動系/既知名っぽいものを上位に出しやすくするため、Mapは追加順を維持。
+        scanDevices.put(addr, d);
+    }
+
+    @SuppressLint("MissingPermission")
+    private void stopScanAndShowChoices() {
+        if (!scanning) return;
+        scanning = false;
+        try { if (scanner != null) scanner.stopScan(scanCallback); } catch (Exception ignored) {}
+        if (scanDevices.isEmpty()) {
+            sendBikeState(false, getSavedBikeNameOrDefault(), "見つかりません", null, null, lastBattery, bikeType, "センサーが見つかりません。FITBOXを漕ぎながら再検索してください");
+            Toast.makeText(this, "センサーが見つかりません", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        List<BluetoothDevice> list = new ArrayList<>(scanDevices.values());
+        list.sort((a, b) -> scoreDevice(b) - scoreDevice(a));
+        String[] labels = new String[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            BluetoothDevice d = list.get(i);
+            labels[i] = safeDeviceName(d) + "\n" + d.getAddress();
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("センサーを選択")
+                .setItems(labels, (dialog, which) -> connectBike(list.get(which), true))
+                .setNegativeButton("キャンセル", (dialog, which) -> sendBikeState(false, getSavedBikeNameOrDefault(), "未接続", null, null, lastBattery, bikeType, null))
+                .show();
+    }
+
+    @SuppressLint("MissingPermission")
+    private int scoreDevice(BluetoothDevice d) {
+        String n = safeDeviceName(d).toLowerCase();
+        int s = 0;
+        if (n.contains("fitbox")) s += 100;
+        if (n.contains("bike") || n.contains("fitness") || n.contains("ftms")) s += 40;
+        if (!n.equals("名称なし")) s += 10;
+        return s;
+    }
+
+    @SuppressLint("MissingPermission")
+    private void reconnectBikeInternal(boolean userAction) {
+        requestBasicPermissionsIfNeeded();
+        if (!hasBlePermissions()) {
+            sendBikeState(false, getSavedBikeNameOrDefault(), "Bluetooth権限待ち", null, null, lastBattery, bikeType, "Bluetooth権限を許可してください");
+            return;
+        }

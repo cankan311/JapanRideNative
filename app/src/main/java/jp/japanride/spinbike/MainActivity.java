@@ -619,3 +619,276 @@ public class MainActivity extends Activity {
             sendBikeState(false, getSavedBikeNameOrDefault(), "Bluetooth権限待ち", null, null, lastBattery, bikeType, "Bluetooth権限を許可してください");
             return;
         }
+String address = prefs.getString(KEY_BIKE_ADDRESS, null);
+        if (address == null || bluetoothAdapter == null) {
+            sendBikeState(false, getSavedBikeNameOrDefault(), "保存済みなし", null, null, lastBattery, bikeType, userAction ? "先にセンサー登録してください" : null);
+            return;
+        }
+        try {
+            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(address);
+            connectBike(device, false);
+        } catch (Exception e) {
+            sendBikeState(false, getSavedBikeNameOrDefault(), "再接続失敗", null, null, lastBattery, bikeType, e.getMessage());
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void connectBike(BluetoothDevice device, boolean save) {
+        if (device == null) return;
+        disconnectBikeInternal(null);
+        bikeDevice = device;
+        lastCscCrankRev = lastCscCrankTime = lastPowerCrankRev = lastPowerCrankTime = -1;
+        bikeType = "接続中";
+        if (save) saveBike(device);
+        sendBikeState(false, safeDeviceName(device), "接続中...", null, null, lastBattery, bikeType, null);
+        try {
+            bikeGatt = device.connectGatt(this, false, bikeGattCallback, BluetoothDevice.TRANSPORT_LE);
+        } catch (Exception e) {
+            sendBikeState(false, safeDeviceName(device), "接続失敗", null, null, lastBattery, bikeType, e.getMessage());
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void disconnectBikeInternal(String state) {
+        try { if (bikeGatt != null) bikeGatt.disconnect(); } catch (Exception ignored) {}
+        try { if (bikeGatt != null) bikeGatt.close(); } catch (Exception ignored) {}
+        bikeGatt = null;
+        bikeDevice = null;
+        if (state != null) sendBikeState(false, getSavedBikeNameOrDefault(), state, 0.0, null, lastBattery, bikeType, null);
+    }
+
+    private final BluetoothGattCallback bikeGattCallback = new BluetoothGattCallback() {
+        @SuppressLint("MissingPermission")
+        @Override public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
+                bikeGatt = gatt;
+                bikeDevice = gatt.getDevice();
+                saveBike(bikeDevice);
+                sendBikeState(true, safeDeviceName(bikeDevice), "サービス確認中", null, null, lastBattery, bikeType, null);
+                try { gatt.discoverServices(); } catch (Exception e) { sendBikeState(false, safeDeviceName(bikeDevice), "サービス確認失敗", null, null, lastBattery, bikeType, e.getMessage()); }
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                sendBikeState(false, getCurrentBikeName(), "未接続", 0.0, null, lastBattery, bikeType, null);
+                try { gatt.close(); } catch (Exception ignored) {}
+                if (gatt == bikeGatt) bikeGatt = null;
+            }
+        }
+
+        @Override public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                sendBikeState(true, safeDeviceName(gatt.getDevice()), "サービス取得失敗", null, null, lastBattery, bikeType, "GATT status " + status);
+                return;
+            }
+            startBikeServices(gatt);
+        }
+
+        @Override public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            handleCharacteristic(gatt, characteristic);
+        }
+
+        @Override public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            if (status == BluetoothGatt.GATT_SUCCESS) handleCharacteristic(gatt, characteristic);
+        }
+    };
+
+    @SuppressLint("MissingPermission")
+    private void startBikeServices(BluetoothGatt gatt) {
+        boolean subscribed = false;
+        manufacturer = readUtf8(gatt, UUID_DEVICE_INFO_SERVICE, UUID_MANUFACTURER_NAME, manufacturer);
+        modelNumber = readUtf8(gatt, UUID_DEVICE_INFO_SERVICE, UUID_MODEL_NUMBER, modelNumber);
+        lastBattery = readUint8(gatt, UUID_BATTERY_SERVICE, UUID_BATTERY_LEVEL, lastBattery);
+
+        if (subscribe(gatt, UUID_FTMS_SERVICE, UUID_INDOOR_BIKE_DATA)) { bikeType = "FTMS / Indoor Bike"; subscribed = true; }
+        if (subscribe(gatt, UUID_CSC_SERVICE, UUID_CSC_MEASUREMENT)) { if (!subscribed) bikeType = "CSC / Cadence"; subscribed = true; }
+        if (subscribe(gatt, UUID_POWER_SERVICE, UUID_POWER_MEASUREMENT)) { if (!subscribed) bikeType = "Cycling Power"; subscribed = true; }
+
+        if (subscribed) {
+            sendBikeState(true, safeDeviceName(gatt.getDevice()), "接続中 / 漕ぎ待ち", null, null, lastBattery, bikeType, null);
+        } else {
+            sendBikeState(true, safeDeviceName(gatt.getDevice()), "接続済み / RPM通知なし", null, null, lastBattery, "未対応", "FTMS/CSC/Cycling Powerの通知が見つかりません");
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private boolean subscribe(BluetoothGatt gatt, UUID serviceId, UUID charId) {
+        try {
+            BluetoothGattService s = gatt.getService(serviceId);
+            if (s == null) return false;
+            BluetoothGattCharacteristic c = s.getCharacteristic(charId);
+            if (c == null) return false;
+            gatt.setCharacteristicNotification(c, true);
+            BluetoothGattDescriptor d = c.getDescriptor(UUID_CCCD);
+            if (d != null) {
+                d.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                gatt.writeDescriptor(d);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private String readUtf8(BluetoothGatt gatt, UUID serviceId, UUID charId, String fallback) {
+        try {
+            BluetoothGattService s = gatt.getService(serviceId);
+            if (s == null) return fallback;
+            BluetoothGattCharacteristic c = s.getCharacteristic(charId);
+            if (c == null) return fallback;
+            byte[] v = c.getValue();
+            if (v != null && v.length > 0) return new String(v, StandardCharsets.UTF_8);
+            gatt.readCharacteristic(c);
+        } catch (Exception ignored) {}
+        return fallback;
+    }
+
+    @SuppressLint("MissingPermission")
+    private Integer readUint8(BluetoothGatt gatt, UUID serviceId, UUID charId, Integer fallback) {
+        try {
+            BluetoothGattService s = gatt.getService(serviceId);
+            if (s == null) return fallback;
+            BluetoothGattCharacteristic c = s.getCharacteristic(charId);
+            if (c == null) return fallback;
+            byte[] v = c.getValue();
+            if (v != null && v.length > 0) return v[0] & 0xff;
+            gatt.readCharacteristic(c);
+        } catch (Exception ignored) {}
+        return fallback;
+    }
+
+    private void handleCharacteristic(BluetoothGatt gatt, BluetoothGattCharacteristic c) {
+        UUID u = c.getUuid();
+        byte[] v = c.getValue();
+        if (v == null) return;
+        if (UUID_INDOOR_BIKE_DATA.equals(u)) parseIndoorBike(gatt, v);
+        else if (UUID_CSC_MEASUREMENT.equals(u)) parseCsc(gatt, v);
+        else if (UUID_POWER_MEASUREMENT.equals(u)) parsePower(gatt, v);
+        else if (UUID_BATTERY_LEVEL.equals(u) && v.length > 0) {
+            lastBattery = v[0] & 0xff;
+            sendBikeState(true, safeDeviceName(gatt.getDevice()), "接続中", null, null, lastBattery, bikeType, null);
+        }
+    }
+
+    private int u8(byte[] b, int o) { return b[o] & 0xff; }
+    private int u16(byte[] b, int o) { return (b[o] & 0xff) | ((b[o + 1] & 0xff) << 8); }
+    private int s16(byte[] b, int o) { int v = u16(b, o); return v > 32767 ? v - 65536 : v; }
+
+    private void parseIndoorBike(BluetoothGatt gatt, byte[] b) {
+        try {
+            if (b.length < 2) return;
+            int flags = u16(b, 0);
+            int o = 2;
+            Double speed = null;
+            Double rpm = null;
+            if ((flags & 0x0001) == 0 && b.length >= o + 2) { speed = u16(b, o) / 100.0; o += 2; }
+            if ((flags & 0x0002) != 0 && b.length >= o + 2) o += 2; // average speed
+            if ((flags & 0x0004) != 0 && b.length >= o + 2) { rpm = u16(b, o) / 2.0; o += 2; }
+            if ((flags & 0x0008) != 0 && b.length >= o + 2) o += 2;
+            if ((flags & 0x0010) != 0 && b.length >= o + 3) o += 3;
+            if ((flags & 0x0020) != 0 && b.length >= o + 2) o += 2;
+            if ((flags & 0x0040) != 0 && b.length >= o + 2) o += 2;
+            if ((flags & 0x0080) != 0 && b.length >= o + 2) o += 2;
+            bikeType = "FTMS / Indoor Bike";
+            if (rpm != null || speed != null) sendBikeState(true, safeDeviceName(gatt.getDevice()), "RPM受信中", rpm, speed, lastBattery, bikeType, null);
+        } catch (Exception e) {
+            sendBikeState(true, safeDeviceName(gatt.getDevice()), "FTMS解析エラー", null, null, lastBattery, bikeType, e.getMessage());
+        }
+    }
+
+    private void parseCsc(BluetoothGatt gatt, byte[] b) {
+        try {
+            if (b.length < 1) return;
+            int flags = u8(b, 0);
+            int o = 1;
+            if ((flags & 0x01) != 0 && b.length >= o + 6) o += 6; // wheel data
+            if ((flags & 0x02) != 0 && b.length >= o + 4) {
+                int rev = u16(b, o); o += 2;
+                int time = u16(b, o);
+                Double rpm = calcRpm(lastCscCrankRev, rev, lastCscCrankTime, time, 65536);
+                lastCscCrankRev = rev;
+                lastCscCrankTime = time;
+                bikeType = "CSC / Cadence";
+                if (rpm != null) sendBikeState(true, safeDeviceName(gatt.getDevice()), "RPM受信中", rpm, null, lastBattery, bikeType, null);
+            }
+        } catch (Exception e) {
+            sendBikeState(true, safeDeviceName(gatt.getDevice()), "CSC解析エラー", null, null, lastBattery, bikeType, e.getMessage());
+        }
+    }
+
+    private void parsePower(BluetoothGatt gatt, byte[] b) {
+        try {
+            if (b.length < 4) return;
+            int flags = u16(b, 0);
+            int o = 2;
+            int power = s16(b, o); o += 2;
+            if ((flags & 0x0001) != 0 && b.length >= o + 1) o += 1;
+            if ((flags & 0x0004) != 0 && b.length >= o + 2) o += 2;
+            if ((flags & 0x0010) != 0 && b.length >= o + 6) o += 6;
+            Double rpm = null;
+            if ((flags & 0x0020) != 0 && b.length >= o + 4) {
+                int rev = u16(b, o); o += 2;
+                int time = u16(b, o);
+                rpm = calcRpm(lastPowerCrankRev, rev, lastPowerCrankTime, time, 65536);
+                lastPowerCrankRev = rev;
+                lastPowerCrankTime = time;
+            }
+            bikeType = "Cycling Power";
+            if (rpm != null) sendBikeState(true, safeDeviceName(gatt.getDevice()), "RPM受信中", rpm, null, lastBattery, bikeType, null);
+            else sendBikeState(true, safeDeviceName(gatt.getDevice()), "Power受信中 " + power + "W", null, null, lastBattery, bikeType, null);
+        } catch (Exception e) {
+            sendBikeState(true, safeDeviceName(gatt.getDevice()), "Power解析エラー", null, null, lastBattery, bikeType, e.getMessage());
+        }
+    }
+
+    private Double calcRpm(int prevRev, int rev, int prevTime, int time, int mod) {
+        if (prevRev < 0 || prevTime < 0) return null;
+        int revDiff = rev - prevRev;
+        if (revDiff < 0) revDiff += mod;
+        int timeDiff = time - prevTime;
+        if (timeDiff <= 0) timeDiff += 65536;
+        if (timeDiff <= 0 || revDiff < 0) return null;
+        double rpm = revDiff * 60.0 / (timeDiff / 1024.0);
+        if (!Double.isFinite(rpm) || rpm < 0 || rpm > 300) return null;
+        return rpm;
+    }
+
+    private void sendHeartState(String name, boolean connected, String state, Integer hr, Integer battery, String error) {
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("native", true);
+            payload.put("name", name == null ? "未登録" : name);
+            payload.put("connected", connected);
+            payload.put("state", state == null ? "未接続" : state);
+            if (hr != null) payload.put("hr", hr);
+            if (battery != null) payload.put("battery", battery);
+            if (error != null && !error.isEmpty()) payload.put("error", error);
+            String js = "window.JapanRideNativeHeartUpdate && window.JapanRideNativeHeartUpdate(" + payload.toString() + ");";
+            mainHandler.post(() -> webView.evaluateJavascript(js, null));
+        } catch (Exception ignored) {}
+    }
+
+    private void sendBikeState(boolean connected, String name, String state, Double rpm, Double speed, Integer battery, String type, String error) {
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("native", true);
+            payload.put("connected", connected);
+            payload.put("name", name == null ? "未登録" : name);
+            payload.put("state", state == null ? "未接続" : state);
+            if (rpm != null) payload.put("rpm", rpm);
+            if (speed != null) payload.put("speed", speed);
+            if (battery != null) payload.put("battery", battery);
+            if (type != null) payload.put("type", type);
+            payload.put("manufacturer", manufacturer);
+            payload.put("model", modelNumber);
+            payload.put("lastRx", new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.JAPAN).format(new java.util.Date()));
+            if (error != null && !error.isEmpty()) payload.put("error", error);
+            String js = "window.JapanRideNativeBikeUpdate && window.JapanRideNativeBikeUpdate(" + payload.toString() + ");";
+            mainHandler.post(() -> webView.evaluateJavascript(js, null));
+        } catch (Exception ignored) {}
+    }
+
+    @Override protected void onDestroy() {
+        disconnectBikeInternal(null);
+        disconnectHeartInternal(null);
+        super.onDestroy();
+    }
+}

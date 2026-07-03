@@ -15,17 +15,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check ZIP exists
+        run: |
+          ls -la
+          test -f JapanRideNative_D67_03_shell_no_kotlin_exact.zip
+
       - name: Unzip project
         run: |
           rm -rf build_project
           mkdir build_project
-          unzip JapanRideNative_D67_01_with_actions.zip -d build_project
-          find build_project -maxdepth 3 -type f | head -50
+          unzip JapanRideNative_D67_03_shell_no_kotlin_exact.zip -d build_project
+          find build_project -maxdepth 4 -type f | head -80
 
       - name: Find project directory
         id: find_project
         run: |
           PROJECT_DIR=$(find build_project -name "settings.gradle.kts" -exec dirname {} \; | head -1)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "settings.gradle.kts not found"
+            exit 1
+          fi
           echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
           echo "Found project: $PROJECT_DIR"
 

@@ -14718,6 +14718,13 @@ setTimeout(syncRestoredRideUiD6672,80);
     const t=e.target.closest('#heartSensorPairBtnD6686,#heartSensorSavedBtnD6686,#heartSensorDisconnectBtnD6686,#heartSensorForgetBtnD6686');
     if(!t) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if(window.NativeHeartBridge){
+      if(t.id==='heartSensorPairBtnD6686') NativeHeartBridge.pairHeart();
+      else if(t.id==='heartSensorSavedBtnD6686') NativeHeartBridge.reconnectHeart();
+      else if(t.id==='heartSensorDisconnectBtnD6686') NativeHeartBridge.disconnectHeart();
+      else if(t.id==='heartSensorForgetBtnD6686') NativeHeartBridge.forgetHeart();
+      return;
+    }
     if(t.id==='heartSensorPairBtnD6686') pairAndConnect();
     if(t.id==='heartSensorSavedBtnD6686') connectSavedOnly();
     if(t.id==='heartSensorDisconnectBtnD6686') disconnect();

@@ -4376,6 +4376,155 @@ html,body,.phone,button,input,textarea,select{
   box-shadow:none;
   border-color:rgba(17,24,39,.06);
 }
+.records-streak-card{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  background:linear-gradient(135deg,#ff8a3d,#ff5f6d);
+  border-radius:22px;
+  padding:16px 18px;
+  color:#fff;
+  box-shadow:0 10px 24px rgba(255,95,109,.28);
+}
+.records-streak-card .streak-flame{
+  font-size:34px;
+  line-height:1;
+}
+.records-streak-card strong{
+  font-size:30px;
+  font-weight:800;
+  font-family:"M PLUS Rounded 1c",var(--jr-font,system-ui),sans-serif;
+}
+.records-streak-card strong+span{
+  font-size:13px;
+  font-weight:700;
+  margin-left:4px;
+  opacity:.92;
+}
+.records-streak-card small{
+  display:block;
+  margin-top:2px;
+  font-size:11.5px;
+  font-weight:600;
+  opacity:.85;
+}
+.record-calendar-card{
+  background:#fff;
+  border-radius:20px;
+  padding:14px 14px 16px;
+  box-shadow:0 1px 4px rgba(0,0,0,.05);
+  border:1px solid #f3f4f6;
+}
+.record-calendar-card .calendar-nav{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12.5px;
+  font-weight:700;
+  color:#111827;
+}
+.record-calendar-card .calendar-nav button{
+  width:26px;height:26px;border-radius:9px;border:1px solid #f3f4f6;background:#fafafa;color:#374151;font-size:14px;line-height:1;
+}
+.calendar-weekdays{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  margin-top:10px;
+  margin-bottom:4px;
+}
+.calendar-weekdays span{
+  text-align:center;
+  font-size:10.5px;
+  font-weight:700;
+  color:#9ca3af;
+}
+.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+}
+.calendar-cell{
+  aspect-ratio:1/1;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:10.5px;
+  font-weight:700;
+  color:#9ca3af;
+  background:#f3f4f6;
+  border:1px solid transparent;
+}
+.calendar-cell.pad{ visibility:hidden; }
+.calendar-cell.future{ background:#fafafa; color:#d1d5db; }
+.calendar-cell.lv0{ background:#f3f4f6; color:#9ca3af; }
+.calendar-cell.lv1{ background:#dbeafe; color:#1d4ed8; }
+.calendar-cell.lv2{ background:#93c5fd; color:#1e3a8a; }
+.calendar-cell.lv3{ background:#3b82f6; color:#fff; }
+.calendar-cell.lv4{ background:#1d4ed8; color:#fff; }
+.calendar-cell.selected{ border-color:#111827; box-shadow:0 0 0 2px #111827 inset; }
+.calendar-legend{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:4px;
+  margin-top:10px;
+  font-size:10px;
+  font-weight:700;
+  color:#9ca3af;
+}
+.calendar-legend i{
+  width:11px;height:11px;border-radius:3px;display:inline-block;
+}
+.calendar-legend i.lv0{background:#f3f4f6;}
+.calendar-legend i.lv1{background:#dbeafe;}
+.calendar-legend i.lv2{background:#93c5fd;}
+.calendar-legend i.lv3{background:#3b82f6;}
+.calendar-legend i.lv4{background:#1d4ed8;}
+.calendar-day-detail{
+  margin-top:12px;
+}
+.calendar-day-detail .cd-card{
+  background:#f7f9fc;
+  border-radius:16px;
+  padding:12px 14px;
+}
+.calendar-day-detail .cd-title{
+  font-size:12.5px;
+  font-weight:800;
+  color:#111827;
+  margin-bottom:6px;
+}
+.calendar-day-detail .cd-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.calendar-day-detail .cd-grid div{
+  background:#fff;
+  border-radius:12px;
+  padding:8px 10px;
+}
+.calendar-day-detail .cd-grid small{
+  display:block;
+  color:#9ca3af;
+  font-size:10.5px;
+  font-weight:700;
+}
+.calendar-day-detail .cd-grid b{
+  font-size:14px;
+  color:#111827;
+}
+.calendar-day-detail .cd-rest{
+  color:#9ca3af;
+  font-size:12.5px;
+  font-weight:700;
+  text-align:center;
+  padding:6px 0;
+}
+.calendar-day-detail span i{
+  width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle;
+}
 .record-list-card .ride-log-item strong{
   font-weight:800;
 }
@@ -6692,6 +6841,30 @@ html,body,.phone,button,input,textarea,select{
 </div>
 <div class="records-hero-sub" id="recordHeroSub">まだ走行記録はありません</div>
 </section>
+<section class="records-streak-card">
+<div class="streak-flame">🔥</div>
+<div>
+<strong id="recordStreakDays">0</strong><span>日連続</span>
+<small id="recordStreakBest">最長ストリーク: 0日</small>
+</div>
+</section>
+<section class="record-calendar-card">
+<div class="record-card-head">
+<div>
+<small>CALENDAR</small>
+<strong>カレンダー</strong>
+</div>
+<div class="calendar-nav">
+<button id="calPrevMonth" type="button">‹</button>
+<span id="calMonthLabel">-</span>
+<button id="calNextMonth" type="button">›</button>
+</div>
+</div>
+<div class="calendar-weekdays"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+<div class="calendar-grid" id="calendarGrid"></div>
+<div class="calendar-legend"><span>少</span><i class="lv0"></i><i class="lv1"></i><i class="lv2"></i><i class="lv3"></i><i class="lv4"></i><span>多</span></div>
+<div class="calendar-day-detail" id="calendarDayDetail"></div>
+</section>
 <div class="record-period-tabs" id="recordPeriodTabs">
 <button class="active" data-record-period="7">7日</button>
 <button data-record-period="30">30日</button>
@@ -6764,6 +6937,50 @@ html,body,.phone,button,input,textarea,select{
 <option value="zh-TW">繁體中文</option>
 <option value="ko">한국어</option>
 </select>
+</div>
+<div class="physics-card clean-card" id="profileWeightCard">
+<div class="physics-head">
+<div>
+<small>PROFILE</small>
+<strong>体重・カロリー計算</strong>
+<p>身長・自転車タイプは速度計算に、体重・年齢・性別は消費カロリーと経験値の計算に使います。心拍センサー未接続時はこの体重から推定します（未設定なら65kgとして計算）。</p>
+</div>
+</div>
+<div class="physics-row clean">
+<label style="flex:1">
+<small>身長 (cm)</small>
+<input type="number" id="profileHeightInput" min="120" max="220" step="1" inputmode="numeric" placeholder="165" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid #f3f4f6;background:#fafafa;font-size:15px;box-sizing:border-box;">
+</label>
+<label style="flex:1">
+<small>自転車タイプ</small>
+<select id="profileBikeTypeInput" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid #f3f4f6;background:#fafafa;font-size:15px;box-sizing:border-box;">
+<option value="mamachari">ママチャリ</option>
+<option value="cross">クロスバイク</option>
+<option value="road">ロードバイク</option>
+</select>
+</label>
+</div>
+<div class="physics-row clean">
+<label style="flex:1">
+<small>体重 (kg)</small>
+<input type="number" id="profileWeightInput" min="20" max="250" step="1" inputmode="numeric" placeholder="65" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid #f3f4f6;background:#fafafa;font-size:15px;box-sizing:border-box;">
+</label>
+</div>
+<div class="physics-row clean">
+<label style="flex:1">
+<small>年齢（任意）</small>
+<input type="number" id="profileAgeInput" min="10" max="100" step="1" inputmode="numeric" placeholder="35" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid #f3f4f6;background:#fafafa;font-size:15px;box-sizing:border-box;">
+</label>
+<label style="flex:1">
+<small>性別（任意）</small>
+<select id="profileGenderInput" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid #f3f4f6;background:#fafafa;font-size:15px;box-sizing:border-box;">
+<option value="">未設定</option>
+<option value="male">男性</option>
+<option value="female">女性</option>
+</select>
+</label>
+</div>
+<div class="physics-status" id="profileWeightStatusText">未設定のため65kgとして計算しています。</div>
 </div>
 <div class="sensor-user-card">
 <div class="sensor-user-head">
@@ -9552,6 +9769,7 @@ function currentRideSummary(){
  const percent=Math.min(100,(traveled/total)*100);
  const cp=activeCheckpointCountForLog(traveled);
  const complete=remain<=0.01 || percent>=99.5;
+ const statsD6711=(typeof buildRideStatsSummaryD6711==='function') ? buildRideStatsSummaryD6711() : null;
  return {
    id:'log'+Date.now(),
    routeId:st.activeRouteId,
@@ -9565,7 +9783,13 @@ function currentRideSummary(){
    calories:Math.max(0,Math.round(Number(st.activeRideSessionCal||0))),
    checkpointsReached:cp.reached,
    checkpointsTotal:cp.total,
-   complete
+   complete,
+   avgSpeedKmh: statsD6711?statsD6711.avgSpeedKmh:null,
+   maxSpeedKmh: statsD6711?statsD6711.maxSpeedKmh:null,
+   avgHr: statsD6711?statsD6711.avgHr:null,
+   maxHr: statsD6711?statsD6711.maxHr:null,
+   hrZoneSec: statsD6711?statsD6711.hrZoneSec:null,
+   splits: statsD6711?statsD6711.splits:null
  };
 }
 function openRideResultModal(){
@@ -9671,7 +9895,9 @@ function addDemoRideDistance(km){
    注意: normalizeSavedRoute / loadMyRoutes / editMyRoute / useMyRoute / saveDraftRoute は触らない。
 */
 function currentKmhRaw(){
- return Math.max(0,Number(st.rpm||0))*2*2.1/60*3.6;
+ var gear = (typeof gearRatioD6712==='function') ? gearRatioD6712() : 2.0;
+ var wheel = (typeof wheelCircumM_D6712==='function') ? wheelCircumM_D6712() : 2.1;
+ return Math.max(0,Number(st.rpm||0))*gear*wheel/60*3.6;
 }
 function isActiveRouteMoving(){
  return !!st.activeRouteId && st.myRouteRideState==='riding' && !!st.running;
@@ -9794,7 +10020,7 @@ function setActiveRoute(route){
  st.sess=0;
  st.t=0;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  const phone=document.querySelector('.phone');
  phone.classList.add('my-route-active','my-route-ready');
  phone.classList.remove('my-route-riding','my-route-paused','my-route-complete');
@@ -9814,7 +10040,7 @@ function clearActiveRoute(){
  st.myRouteRideState='';
  st.running=true;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
  const phone=document.querySelector('.phone');
  phone.classList.remove('my-route-active','my-route-ready','my-route-riding','my-route-paused','my-route-complete');
@@ -9884,9 +10110,9 @@ function manualRideTick(){
    const moved=Math.max(0,after-before);
    st.sess=after;
    st.t+=dt;
-   const calAdd=moved*28;
+   const calAdd=computeCalAddD6710(moved, dt, kmh);
    st.activeRideSessionCal=Number(st.activeRideSessionCal||0)+calAdd;
-   st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),kmh);
+   st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),kmh); accumulateRideStatsD6711(kmh, dt, after);
    if(after>=total-0.00001 && !st.resultShown){
      st.sess=total;
      st.myRouteRideState='complete';
@@ -10015,7 +10241,7 @@ function setActiveRoute(route){
  st.sess=0;
  st.t=0;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  st.lastSmoothFrameAt=0;
  st.lastUiRenderAt=0;
@@ -10038,7 +10264,7 @@ function clearActiveRoute(){
  st.myRouteRideState='';
  st.running=true;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
  const phone=document.querySelector('.phone');
@@ -10064,9 +10290,9 @@ function smoothRideFrame(ts){
    const moved=Math.max(0,after-before);
    st.sess=after;
    st.t+=dt;
-   const calAdd=moved*28;
+   const calAdd=computeCalAddD6710(moved, dt, kmh);
    st.activeRideSessionCal=Number(st.activeRideSessionCal||0)+calAdd;
-   st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),kmh);
+   st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),kmh); accumulateRideStatsD6711(kmh, dt, after);
    updateSmoothRouteMapPosition(false);
 
    if(after>=total-0.00001 && !st.resultShown){
@@ -10233,7 +10459,7 @@ function setActiveRoute(route){
  st.sess=0;
  st.t=0;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  st.lastSmoothFrameAt=0;
  st.lastUiRenderAt=0;
@@ -10464,7 +10690,7 @@ function setActiveRoute(route){
  st.sess=0;
  st.t=0;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  st.lastSmoothFrameAt=0;
  st.lastUiRenderAt=0;
@@ -10504,7 +10730,7 @@ function clearActiveRoute(){
  st.myRouteRideState='';
  st.running=true;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
  const phone=document.querySelector('.phone');
@@ -10755,7 +10981,7 @@ function setActiveRoute(route){
  st.sess=0;
  st.t=0;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  st.lastSmoothFrameAt=0;
  st.lastUiRenderAt=0;
@@ -10793,7 +11019,7 @@ function clearActiveRoute(){
  st.myRouteRideState='';
  st.running=true;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
  const phone=document.querySelector('.phone');
@@ -10869,7 +11095,7 @@ function setActiveRoute(route){
  st.sess=0;
  st.t=0;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  syncAutoFollowButton();
  st.lastSmoothFrameAt=0;
@@ -10894,7 +11120,7 @@ function clearActiveRoute(){
  st.myRouteRideState='';
  st.running=true;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  syncAutoFollowButton();
  st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
@@ -11024,7 +11250,7 @@ function setActiveRoute(route){
  st.sess=0;
  st.t=0;
  st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0;
+ st.activeRideMaxSpeed=0; resetRideStatsD6711();
  st.autoFollowRoute=true;
  if(typeof syncAutoFollowButton==='function') syncAutoFollowButton();
  st.lastSmoothFrameAt=0;
@@ -12765,6 +12991,158 @@ function jrRenderDistanceChart(rows){
    <text class="axis-label" x="${pad.l}" y="13">${max.toFixed(max>=10?0:1)}km</text>
  </svg>`;
 }
+function jrComputeStreaks(logs){
+ const daySet=new Set(logs.map(l=>jrDateKey(l.createdAt)).filter(Boolean));
+ const today=new Date(); today.setHours(0,0,0,0);
+ // 現在のストリーク：今日 or 昨日から遡って連続している日数
+ let current=0;
+ let cursor=new Date(today);
+ if(!daySet.has(jrDateKey(cursor))){
+   cursor.setDate(cursor.getDate()-1);
+ }
+ while(daySet.has(jrDateKey(cursor))){
+   current++;
+   cursor.setDate(cursor.getDate()-1);
+ }
+ // 最長ストリーク：全履歴を日付ソートして走査
+ const days=Array.from(daySet).sort();
+ let longest=0, run=0, prev=null;
+ days.forEach(key=>{
+   if(prev){
+     const p=new Date(prev+'T00:00:00'), c=new Date(key+'T00:00:00');
+     const diff=Math.round((c-p)/86400000);
+     run = (diff===1) ? run+1 : 1;
+   }else{
+     run=1;
+   }
+   longest=Math.max(longest,run);
+   prev=key;
+ });
+ return {current, longest};
+}
+function jrCalendarLevel(distanceKm){
+ if(!distanceKm || distanceKm<=0) return 0;
+ if(distanceKm<3) return 1;
+ if(distanceKm<8) return 2;
+ if(distanceKm<15) return 3;
+ return 4;
+}
+var jrCalendarMonth = (function(){ const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; })();
+var jrCalendarSelectedKey = null;
+function jrRenderCalendar(logs){
+ const grid=$('calendarGrid');
+ const label=$('calMonthLabel');
+ if(!grid) return;
+ const byDay={};
+ logs.forEach(l=>{
+   const key=jrDateKey(l.createdAt);
+   if(!key) return;
+   if(!byDay[key]) byDay[key]={distance:0,time:0,cal:0,count:0,speedTimeSum:0,speedWeighted:0,maxSpeed:0,hrTimeSum:0,hrWeighted:0,maxHr:0,hrZoneSec:[0,0,0,0,0],splitsMap:{}};
+   const b=byDay[key];
+   const t=Number(l.timeSec||0);
+   b.distance+=Number(l.distanceKm||0);
+   b.time+=t;
+   b.cal+=Number(l.calories||0);
+   b.count+=1;
+   if(l.avgSpeedKmh!=null && t>0){ b.speedTimeSum+=t; b.speedWeighted+=Number(l.avgSpeedKmh)*t; }
+   if(l.maxSpeedKmh!=null) b.maxSpeed=Math.max(b.maxSpeed,Number(l.maxSpeedKmh));
+   if(l.avgHr!=null && t>0){ b.hrTimeSum+=t; b.hrWeighted+=Number(l.avgHr)*t; }
+   if(l.maxHr!=null) b.maxHr=Math.max(b.maxHr,Number(l.maxHr));
+   if(Array.isArray(l.hrZoneSec)) l.hrZoneSec.forEach((s,i)=>{ b.hrZoneSec[i]=(b.hrZoneSec[i]||0)+Number(s||0); });
+   if(Array.isArray(l.splits)) l.splits.forEach(sp=>{
+     if(!b.splitsMap[sp.km]) b.splitsMap[sp.km]={sum:0,count:0};
+     b.splitsMap[sp.km].sum+=Number(sp.avgSpeedKmh||0);
+     b.splitsMap[sp.km].count+=1;
+   });
+ });
+ const y=jrCalendarMonth.getFullYear(), m=jrCalendarMonth.getMonth();
+ if(label) label.textContent=`${y}年${m+1}月`;
+ const firstDow=new Date(y,m,1).getDay();
+ const daysInMonth=new Date(y,m+1,0).getDate();
+ const today=new Date(); today.setHours(0,0,0,0);
+ let html='';
+ for(let i=0;i<firstDow;i++) html+='<div class="calendar-cell pad"></div>';
+ for(let d=1; d<=daysInMonth; d++){
+   const dateObj=new Date(y,m,d);
+   const key=jrDateKey(dateObj);
+   const info=byDay[key];
+   const isFuture=dateObj>today;
+   const lv=info?jrCalendarLevel(info.distance):0;
+   const cls=isFuture?'future':('lv'+lv);
+   const sel=(key===jrCalendarSelectedKey)?' selected':'';
+   html+=`<div class="calendar-cell ${cls}${sel}" data-cal-day="${key}">${d}</div>`;
+ }
+ grid.innerHTML=html;
+ if(jrCalendarSelectedKey) jrRenderCalendarDayDetail(jrCalendarSelectedKey, byDay[jrCalendarSelectedKey]);
+}
+function jrRenderCalendarDayDetail(key, info){
+ const box=$('calendarDayDetail');
+ if(!box) return;
+ const p=String(key).split('-');
+ const title=`${Number(p[1])}月${Number(p[2])}日の記録`;
+ if(!info || !info.count){
+   box.innerHTML=`<div class="cd-card"><div class="cd-title">${title}</div><div class="cd-rest">😴 休むのも大事なトレーニングです</div></div>`;
+   return;
+ }
+ const avgSpeed = info.speedTimeSum>0 ? (info.speedWeighted/info.speedTimeSum) : 0;
+ const avgHr = info.hrTimeSum>0 ? Math.round(info.hrWeighted/info.hrTimeSum) : null;
+ const zoneNames=['回復','脂肪燃焼','有酸素','強化','最大'];
+ const zoneColors=['#bfdbfe','#6ee7b7','#fcd34d','#fb923c','#f87171'];
+ const zoneTotal=(info.hrZoneSec||[0,0,0,0,0]).reduce((a,b)=>a+b,0);
+ let zoneHtml='';
+ if(zoneTotal>0){
+   const bars=info.hrZoneSec.map((s,i)=>{
+     const pct=zoneTotal>0?(s/zoneTotal*100):0;
+     return pct>0 ? `<div style="flex:${pct.toFixed(2)};background:${zoneColors[i]};height:100%"></div>` : '';
+   }).join('');
+   const labels=info.hrZoneSec.map((s,i)=> s>0 ? `<span><i style="background:${zoneColors[i]}"></i>${zoneNames[i]} ${Math.round(s/60)}分</span>` : '').filter(Boolean).join('');
+   zoneHtml=`<div class="cd-title" style="margin-top:12px">心拍ゾーン滞在時間</div>
+     <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:#f3f4f6">${bars}</div>
+     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;font-size:10.5px;font-weight:700;color:#6b7280">${labels}</div>`;
+ }
+ const splitEntries=Object.keys(info.splitsMap||{}).map(Number).sort((a,b)=>a-b);
+ let splitsHtml='';
+ if(splitEntries.length){
+   const cards=splitEntries.map(km=>{
+     const s=info.splitsMap[km];
+     const avg=s.count>0?(s.sum/s.count):0;
+     return `<div style="background:#fff;border-radius:12px;padding:8px 10px;min-width:64px;text-align:center"><small style="display:block;color:#9ca3af;font-size:10px;font-weight:700">${km}km</small><b style="font-size:13px;color:#111827">${avg.toFixed(1)}km/h</b></div>`;
+   }).join('');
+   splitsHtml=`<div class="cd-title" style="margin-top:12px">距離別スピード</div>
+     <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">${cards}</div>`;
+ }
+ box.innerHTML=`<div class="cd-card">
+   <div class="cd-title">${title}</div>
+   <div class="cd-grid">
+     <div><small>距離</small><b>${info.distance.toFixed(2)}km</b></div>
+     <div><small>時間</small><b>${jrFmtDurationShort(info.time)}</b></div>
+     <div><small>カロリー</small><b>${Math.round(info.cal)}kcal</b></div>
+     <div><small>平均速度</small><b>${avgSpeed>0?avgSpeed.toFixed(1)+'km/h':'—'}</b></div>
+     <div><small>最高速度</small><b>${info.maxSpeed>0?info.maxSpeed.toFixed(1)+'km/h':'—'}</b></div>
+     <div><small>平均心拍</small><b>${avgHr!=null?avgHr+'bpm':'—'}</b></div>
+   </div>
+   ${zoneHtml}
+   ${splitsHtml}
+ </div>`;
+}
+document.addEventListener('click',function(e){
+ const cell=e.target.closest && e.target.closest('.calendar-cell[data-cal-day]');
+ if(cell){
+   jrCalendarSelectedKey = (jrCalendarSelectedKey===cell.dataset.calDay) ? null : cell.dataset.calDay;
+   renderRideLogs();
+   return;
+ }
+ if(e.target.closest && e.target.closest('#calPrevMonth')){
+   jrCalendarMonth.setMonth(jrCalendarMonth.getMonth()-1);
+   renderRideLogs();
+   return;
+ }
+ if(e.target.closest && e.target.closest('#calNextMonth')){
+   jrCalendarMonth.setMonth(jrCalendarMonth.getMonth()+1);
+   renderRideLogs();
+   return;
+ }
+});
 function renderRideLogs(){
  const logs=loadRideLogs();
  const period=jrRecordPeriod||'7';
@@ -12772,6 +13150,11 @@ function renderRideLogs(){
  const allSum=jrSumLogs(logs);
  const sum=jrSumLogs(filtered);
  const buckets=jrChartBuckets(logs,period);
+ const streak=jrComputeStreaks(logs);
+ jrSetText('recordStreakDays',String(streak.current));
+ jrSetText('recordStreakBest','最長ストリーク: '+streak.longest+'日');
+ jrRenderCalendar(logs);
+
 
  jrSetText('recordHeroDistance',allSum.distance.toFixed(2));
  jrSetText('recordHeroCount',String(allSum.count));
@@ -13524,9 +13907,9 @@ setTimeout(syncRestoredRideUiD6672,80);
         const moved=Math.max(0,after-before);
         st.sess=after;
         st.t+=dt;
-        const calAdd=moved*28;
+        const calAdd=computeCalAddD6710(moved, dt, kmh);
         st.activeRideSessionCal=Number(st.activeRideSessionCal||0)+calAdd;
-        st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),kmh);
+        st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),kmh); accumulateRideStatsD6711(kmh, dt, after);
         if(typeof updateSmoothRouteMapPosition==='function') updateSmoothRouteMapPosition(false);
 
         if(after>=total-0.00001 && !st.resultShown){
@@ -13682,6 +14065,239 @@ setTimeout(syncRestoredRideUiD6672,80);
   }catch(e){}
   document.addEventListener('DOMContentLoaded', function(){ setTimeout(boot,100); setTimeout(boot,700); setTimeout(boot,1800); });
   setTimeout(boot,300);
+})();
+</script>
+
+<!-- D67-10b: 体重プロファイル & MET/Keytelハイブリッドのカロリー計算 -->
+<script>
+(function(){
+  function getProfileWeightKgD6710(){
+    try{
+      var v=Number(localStorage.getItem('japanRide.profile.weightKg'));
+      if(isFinite(v) && v>=20 && v<=250) return v;
+    }catch(e){}
+    return 65;
+  }
+  function setProfileWeightKgD6710(v){
+    try{ localStorage.setItem('japanRide.profile.weightKg', String(v)); }catch(e){}
+  }
+  function getProfileAgeD6710(){
+    try{
+      var v=Number(localStorage.getItem('japanRide.profile.ageYears'));
+      if(isFinite(v) && v>=10 && v<=100) return v;
+    }catch(e){}
+    return null; // 未設定
+  }
+  function setProfileAgeD6710(v){
+    try{ localStorage.setItem('japanRide.profile.ageYears', String(v)); }catch(e){}
+  }
+  function getProfileGenderD6710(){
+    try{
+      var v=localStorage.getItem('japanRide.profile.gender');
+      if(v==='male'||v==='female') return v;
+    }catch(e){}
+    return null; // 未設定
+  }
+  function setProfileGenderD6710(v){
+    try{ localStorage.setItem('japanRide.profile.gender', v||''); }catch(e){}
+  }
+  function getProfileHeightCmD6712(){
+    try{
+      var v=Number(localStorage.getItem('japanRide.profile.heightCm'));
+      if(isFinite(v) && v>=120 && v<=220) return v;
+    }catch(e){}
+    return null; // 未設定
+  }
+  function setProfileHeightCmD6712(v){
+    try{ localStorage.setItem('japanRide.profile.heightCm', String(v)); }catch(e){}
+  }
+  function getProfileBikeTypeD6712(){
+    try{
+      var v=localStorage.getItem('japanRide.profile.bikeType');
+      if(v==='mamachari'||v==='cross'||v==='road') return v;
+    }catch(e){}
+    return 'mamachari'; // デフォルト
+  }
+  function setProfileBikeTypeD6712(v){
+    try{ localStorage.setItem('japanRide.profile.bikeType', v||'mamachari'); }catch(e){}
+  }
+  // 仕様書2.2の対応表：身長→ホイール周長、自転車タイプ→ベースギア比
+  function wheelCircumM_D6712(){
+    var h=getProfileHeightCmD6712();
+    if(h==null) return 2.1; // 未設定時は161-175cm相当のデフォルト
+    if(h<=160) return 2.0;
+    if(h<=175) return 2.1;
+    return 2.15;
+  }
+  function gearRatioD6712(){
+    var t=getProfileBikeTypeD6712();
+    if(t==='cross') return 2.5;
+    if(t==='road') return 3.0;
+    return 2.0; // ママチャリ
+  }
+  window.wheelCircumM_D6712=wheelCircumM_D6712;
+  window.gearRatioD6712=gearRatioD6712;
+  window.getProfileWeightKgD6710=getProfileWeightKgD6710;
+
+  // 一般的なサイクリングのMET早見表（速度帯別）。屋外自転車相当の推定速度に対して適用する。
+  function metForSpeedD6710(kmh){
+    kmh=Number(kmh)||0;
+    if(kmh<16) return 4.0;
+    if(kmh<19.2) return 6.8;
+    if(kmh<22.4) return 8.0;
+    if(kmh<25.6) return 10.0;
+    if(kmh<30.6) return 12.0;
+    return 15.8;
+  }
+
+  // 心拍が取れていればKeytel式(男女式の平均・年齢未入力time35歳と仮定)、
+  // 取れていなければMET式(速度×体重×時間)にフォールバックする。
+  // D67-11: 日別詳細用（速度・心拍ゾーン・2kmスプリット）の走行中集計
+  window.resetRideStatsD6711=function(){
+    st.activeRideSpeedSumD6711=0;
+    st.activeRideSpeedTimeD6711=0;
+    st.activeRideMaxHrD6711=0;
+    st.activeRideHrSumD6711=0;
+    st.activeRideHrTimeD6711=0;
+    st.activeRideHrZoneSecD6711=[0,0,0,0,0];
+    st.activeRideSplitsD6711=[];
+  };
+  window.accumulateRideStatsD6711=function(kmh, dt, afterKm){
+    try{
+      dt=Math.max(0,Number(dt)||0);
+      kmh=Number(kmh)||0;
+      if(dt<=0) return;
+      st.activeRideSpeedSumD6711=Number(st.activeRideSpeedSumD6711||0)+kmh*dt;
+      st.activeRideSpeedTimeD6711=Number(st.activeRideSpeedTimeD6711||0)+dt;
+      var hr=0;
+      try{ hr=Number(st.hr||0); }catch(e){}
+      if(hr>=40 && hr<=220){
+        st.activeRideMaxHrD6711=Math.max(Number(st.activeRideMaxHrD6711||0),hr);
+        st.activeRideHrSumD6711=Number(st.activeRideHrSumD6711||0)+hr*dt;
+        st.activeRideHrTimeD6711=Number(st.activeRideHrTimeD6711||0)+dt;
+        var age=35; try{ var a=getProfileAgeD6710(); if(a) age=a; }catch(e){}
+        var estMaxHr=Math.max(120,220-age);
+        var pct=hr/estMaxHr;
+        var zoneIdx = pct<0.6?0 : pct<0.7?1 : pct<0.8?2 : pct<0.9?3 : 4;
+        if(!Array.isArray(st.activeRideHrZoneSecD6711)) st.activeRideHrZoneSecD6711=[0,0,0,0,0];
+        st.activeRideHrZoneSecD6711[zoneIdx]=(st.activeRideHrZoneSecD6711[zoneIdx]||0)+dt;
+      }
+      if(!Array.isArray(st.activeRideSplitsD6711)) st.activeRideSplitsD6711=[];
+      var bucketIdx=Math.max(0,Math.floor(Number(afterKm||0)/2));
+      var arr=st.activeRideSplitsD6711;
+      while(arr.length<=bucketIdx) arr.push({speedSum:0,timeSum:0});
+      arr[bucketIdx].speedSum+=kmh*dt;
+      arr[bucketIdx].timeSum+=dt;
+    }catch(e){}
+  };
+  window.buildRideStatsSummaryD6711=function(){
+    var speedTime=Number(st.activeRideSpeedTimeD6711||0);
+    var avgSpeedKmh = speedTime>0 ? Number(st.activeRideSpeedSumD6711||0)/speedTime : 0;
+    var hrTime=Number(st.activeRideHrTimeD6711||0);
+    var avgHr = hrTime>0 ? Math.round(Number(st.activeRideHrSumD6711||0)/hrTime) : null;
+    var maxHr = Number(st.activeRideMaxHrD6711||0) || null;
+    var hrZoneSec = Array.isArray(st.activeRideHrZoneSecD6711) ? st.activeRideHrZoneSecD6711.slice() : [0,0,0,0,0];
+    var splits = (Array.isArray(st.activeRideSplitsD6711)?st.activeRideSplitsD6711:[]).map(function(b,i){
+      return { km:(i+1)*2, avgSpeedKmh: b.timeSum>0 ? Number((b.speedSum/b.timeSum).toFixed(1)) : 0 };
+    }).filter(function(s){ return s.avgSpeedKmh>0; });
+    return {
+      avgSpeedKmh: Number(avgSpeedKmh.toFixed(1)),
+      maxSpeedKmh: Number((st.activeRideMaxSpeed||0).toFixed(1)),
+      avgHr: avgHr,
+      maxHr: maxHr,
+      hrZoneSec: hrZoneSec,
+      splits: splits
+    };
+  };
+
+  window.computeCalAddD6710=function(deltaKm, dtSec, kmh){
+    var w=getProfileWeightKgD6710();
+    var hr=0;
+    try{ if(typeof st!=='undefined') hr=Number(st.hr||0); }catch(e){}
+    var minutes=Math.max(0, Number(dtSec||0))/60;
+    if(hr>=40 && hr<=220){
+      var age=getProfileAgeD6710(); if(age==null) age=35;
+      var gender=getProfileGenderD6710();
+      var kcalPerMin;
+      if(gender==='male'){
+        kcalPerMin=Math.max(0,(-55.0969+0.6309*hr+0.1988*w+0.2017*age)/4.184);
+      }else if(gender==='female'){
+        kcalPerMin=Math.max(0,(-20.4022+0.4472*hr-0.1263*w+0.074*age)/4.184);
+      }else{
+        var male=(-55.0969+0.6309*hr+0.1988*w+0.2017*age)/4.184;
+        var female=(-20.4022+0.4472*hr-0.1263*w+0.074*age)/4.184;
+        kcalPerMin=Math.max(0,(male+female)/2);
+      }
+      return kcalPerMin*minutes;
+    }
+    var met=metForSpeedD6710(kmh);
+    var kcalPerMin=met*3.5*w/200;
+    return kcalPerMin*minutes;
+  };
+
+  function syncProfileWeightUi(){
+    var wInput=document.getElementById('profileWeightInput');
+    var aInput=document.getElementById('profileAgeInput');
+    var gInput=document.getElementById('profileGenderInput');
+    var hInput=document.getElementById('profileHeightInput');
+    var bInput=document.getElementById('profileBikeTypeInput');
+    var status=document.getElementById('profileWeightStatusText');
+    if(!wInput) return;
+    var storedW=null, storedA=null, storedG=null, storedH=null, storedB=null;
+    try{
+      storedW=localStorage.getItem('japanRide.profile.weightKg');
+      storedA=localStorage.getItem('japanRide.profile.ageYears');
+      storedG=localStorage.getItem('japanRide.profile.gender');
+      storedH=localStorage.getItem('japanRide.profile.heightCm');
+      storedB=localStorage.getItem('japanRide.profile.bikeType');
+    }catch(e){}
+    if(storedW && wInput.value==='') wInput.value=storedW;
+    if(aInput && storedA && aInput.value==='') aInput.value=storedA;
+    if(gInput && storedG && gInput.value==='') gInput.value=storedG;
+    if(hInput && storedH && hInput.value==='') hInput.value=storedH;
+    if(bInput && storedB) bInput.value=storedB;
+    if(status){
+      var parts=[];
+      parts.push('体重 '+(storedW||'65')+'kg');
+      if(storedA) parts.push('年齢 '+storedA+'歳');
+      if(storedG) parts.push(storedG==='male'?'男性':'女性');
+      if(storedH) parts.push('身長 '+storedH+'cm');
+      var bikeLabel={mamachari:'ママチャリ',cross:'クロス',road:'ロード'}[storedB||'mamachari'];
+      parts.push(bikeLabel);
+      status.textContent=parts.join(' / ')+'で計算しています。';
+    }
+  }
+
+  document.addEventListener('input', function(e){
+    var t=e.target;
+    if(t && t.id==='profileWeightInput'){
+      var v=Number(t.value);
+      if(isFinite(v) && v>=20 && v<=250) setProfileWeightKgD6710(v);
+    }else if(t && t.id==='profileAgeInput'){
+      var v=Number(t.value);
+      if(isFinite(v) && v>=10 && v<=100) setProfileAgeD6710(v);
+    }else if(t && t.id==='profileHeightInput'){
+      var v=Number(t.value);
+      if(isFinite(v) && v>=120 && v<=220) setProfileHeightCmD6712(v);
+    }else{
+      return;
+    }
+    syncProfileWeightUi();
+  });
+  document.addEventListener('change', function(e){
+    var t=e.target;
+    if(t && t.id==='profileGenderInput'){
+      setProfileGenderD6710(t.value);
+      syncProfileWeightUi();
+    }else if(t && t.id==='profileBikeTypeInput'){
+      setProfileBikeTypeD6712(t.value);
+      syncProfileWeightUi();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(syncProfileWeightUi,100); setTimeout(syncProfileWeightUi,700); });
+  setTimeout(syncProfileWeightUi,300);
+  setInterval(function(){ if(document.getElementById('settingsPage')) syncProfileWeightUi(); },900);
 })();
 </script>
 </body>

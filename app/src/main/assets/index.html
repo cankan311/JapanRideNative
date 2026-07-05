@@ -1660,6 +1660,30 @@
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.myroute-ghost-line{
+  margin-top:8px;
+  border-radius:14px;
+  padding:8px 9px;
+  background:rgba(139,92,246,.10);
+  border:1px solid rgba(139,92,246,.25);
+}
+.myroute-ghost-line small{
+  display:block;
+  font-size:9.5px;
+  line-height:1;
+  color:#7c3aed;
+  font-weight:1000;
+  margin-bottom:5px;
+}
+.myroute-ghost-line b{
+  display:block;
+  color:#5b21b6;
+  font-size:15px;
+  line-height:1.2;
+  font-weight:1000;
+}
+.myroute-ghost-line b.ahead{ color:#059669; }
+.myroute-ghost-line b.behind{ color:#dc2626; }
 #myRouteNextRemain{
   margin-left:4px;
   color:#12895b;
@@ -1767,6 +1791,16 @@
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+}
+.ride-result-newbest{
+  margin-top:8px;
+  display:inline-block;
+  background:linear-gradient(135deg,#fde68a,#fbbf24);
+  color:#78350f;
+  font-size:12.5px;
+  font-weight:1000;
+  padding:6px 12px;
+  border-radius:999px;
 }
 .ride-result-main{
   display:flex;
@@ -7095,6 +7129,10 @@ html,body,.phone,button,input,textarea,select{
 <small>次のチェックポイント</small>
 <b><span id="myRouteNextName">未設定</span><span id="myRouteNextRemain"></span></b>
 </div>
+<div class="myroute-ghost-line" id="ghostDeltaLine" style="display:none">
+<small>👻 自己ベストとの差</small>
+<b id="ghostDeltaText">-</b>
+</div>
 </div>
 <div class="progress"><div class="base"></div><div class="fill" id="fill"></div><div id="dots"></div><div class="bike" id="bike"></div></div>
 <div class="subgoals"><span class="current-address-line" id="smallGoal">静岡県島田市金谷富士見町</span><span id="mediumGoal">中継地 大井川 27km</span></div>
@@ -7215,6 +7253,7 @@ html,body,.phone,button,input,textarea,select{
 <strong>走行おつかれさま！</strong>
 </div>
 <div class="ride-result-route" id="rideResultRoute">マイルート</div>
+<div class="ride-result-newbest" id="rideResultNewBest" style="display:none">🏆 自己ベスト更新！</div>
 <div class="ride-result-main">
 <b id="rideResultDistance">0.00 / 0.00 km</b>
 <span id="rideResultStatus">途中終了</span>
@@ -9803,6 +9842,7 @@ function openRideResultModal(){
  if($('rideResultTime')) $('rideResultTime').textContent=fmtTime(summary.timeSec);
  if($('rideResultCal')) $('rideResultCal').textContent=summary.calories+'kcal';
  if($('rideResultCp')) $('rideResultCp').textContent=`${summary.checkpointsReached} / ${summary.checkpointsTotal}`;
+ if($('rideResultNewBest')) $('rideResultNewBest').style.display = st.newBestThisRunD6713 ? '' : 'none';
  if($('rideResultModal')){
    $('rideResultModal').classList.add('open');
    $('rideResultModal').setAttribute('aria-hidden','false');
@@ -11190,6 +11230,7 @@ function updateSmoothRouteMapPosition(forceLine=false){
  const traveled=getActiveRouteTraveledKm();
  const p=routePointAtDistance(st.route,traveled);
  if(p && marker) marker.setLngLat(p);
+ if(typeof updateGhostMarkerD6713==="function") updateGhostMarkerD6713(st.route, traveled);
 
  const now=performance.now();
  if(forceLine || !st.lastSmoothLineAt || now-st.lastSmoothLineAt>70){
@@ -11251,6 +11292,7 @@ function setActiveRoute(route){
  st.t=0;
  st.activeRideSessionCal=0;
  st.activeRideMaxSpeed=0; resetRideStatsD6711();
+ if(typeof resetGhostRunD6713==="function") resetGhostRunD6713();
  st.autoFollowRoute=true;
  if(typeof syncAutoFollowButton==='function') syncAutoFollowButton();
  st.lastSmoothFrameAt=0;
@@ -13910,6 +13952,7 @@ setTimeout(syncRestoredRideUiD6672,80);
         const calAdd=computeCalAddD6710(moved, dt, kmh);
         st.activeRideSessionCal=Number(st.activeRideSessionCal||0)+calAdd;
         st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),kmh); accumulateRideStatsD6711(kmh, dt, after);
+        if(typeof accumulateGhostSamplesD6713==="function") accumulateGhostSamplesD6713(after, st.t);
         if(typeof updateSmoothRouteMapPosition==='function') updateSmoothRouteMapPosition(false);
 
         if(after>=total-0.00001 && !st.resultShown){
@@ -13917,6 +13960,7 @@ setTimeout(syncRestoredRideUiD6672,80);
           st.myRouteRideState='complete';
           st.running=false;
           st.resultShown=true;
+          if(typeof finalizeGhostBestD6713==='function') finalizeGhostBestD6713(st.activeRouteId, st.t);
           const phone=document.querySelector('.phone');
           if(phone){
             phone.classList.remove('my-route-ready','my-route-riding','my-route-paused');
@@ -14298,6 +14342,114 @@ setTimeout(syncRestoredRideUiD6672,80);
   document.addEventListener('DOMContentLoaded', function(){ setTimeout(syncProfileWeightUi,100); setTimeout(syncProfileWeightUi,700); });
   setTimeout(syncProfileWeightUi,300);
   setInterval(function(){ if(document.getElementById('settingsPage')) syncProfileWeightUi(); },900);
+})();
+</script>
+
+<!-- D67-13: ルートごとの自己ベスト＆ゴースト対戦 -->
+<script>
+(function(){
+  function keyD6713(routeId){ return 'japanRide.routeBest.'+routeId; }
+  function loadBestD6713(routeId){
+    if(!routeId) return null;
+    try{
+      var raw=localStorage.getItem(keyD6713(routeId));
+      if(!raw) return null;
+      var obj=JSON.parse(raw);
+      if(obj && isFinite(obj.bestTimeSec) && Array.isArray(obj.samples) && obj.samples.length>=2) return obj;
+    }catch(e){}
+    return null;
+  }
+  function saveBestD6713(routeId, bestTimeSec, samples){
+    if(!routeId) return;
+    try{
+      localStorage.setItem(keyD6713(routeId), JSON.stringify({bestTimeSec:bestTimeSec, samples:samples, savedAt:Date.now()}));
+    }catch(e){}
+  }
+  // samples: [[distanceKm, timeSec], ...] 距離昇順（ほぼ時間昇順でもある）
+  function interpDistanceAtTimeD6713(samples, t){
+    if(!samples || samples.length<2) return 0;
+    if(t<=samples[0][1]) return samples[0][0];
+    for(var i=1;i<samples.length;i++){
+      if(t<=samples[i][1]){
+        var a=samples[i-1], b=samples[i];
+        var span=b[1]-a[1];
+        var ratio= span>0 ? (t-a[1])/span : 0;
+        return a[0]+(b[0]-a[0])*ratio;
+      }
+    }
+    return samples[samples.length-1][0];
+  }
+  function interpTimeAtDistanceD6713(samples, d){
+    if(!samples || samples.length<2) return 0;
+    if(d<=samples[0][0]) return samples[0][1];
+    for(var i=1;i<samples.length;i++){
+      if(d<=samples[i][0]){
+        var a=samples[i-1], b=samples[i];
+        var span=b[0]-a[0];
+        var ratio= span>0 ? (d-a[0])/span : 0;
+        return a[1]+(b[1]-a[1])*ratio;
+      }
+    }
+    return samples[samples.length-1][1];
+  }
+  window.resetGhostRunD6713=function(){
+    st.currentRunSamplesD6713=[[0,0]];
+    st.lastGhostSampleAtD6713=0;
+    st.newBestThisRunD6713=false;
+    if(window.ghostMarkerD6713){ try{ ghostMarkerD6713.remove(); }catch(e){} window.ghostMarkerD6713=null; }
+    var line=document.getElementById('ghostDeltaLine');
+    if(line) line.style.display='none';
+  };
+  window.accumulateGhostSamplesD6713=function(distanceKm, timeSec){
+    if(!Array.isArray(st.currentRunSamplesD6713)) st.currentRunSamplesD6713=[[0,0]];
+    var lastAt=Number(st.lastGhostSampleAtD6713||0);
+    if(timeSec-lastAt>=1 || distanceKm<=0){
+      st.currentRunSamplesD6713.push([distanceKm, timeSec]);
+      st.lastGhostSampleAtD6713=timeSec;
+    }
+  };
+  window.updateGhostMarkerD6713=function(routeCoords, traveledKm){
+    var line=document.getElementById('ghostDeltaLine');
+    var text=document.getElementById('ghostDeltaText');
+    var best=loadBestD6713(st.activeRouteId);
+    if(!best){
+      if(window.ghostMarkerD6713){ try{ ghostMarkerD6713.remove(); }catch(e){} window.ghostMarkerD6713=null; }
+      if(line) line.style.display='none';
+      return;
+    }
+    var ghostDistanceKm=interpDistanceAtTimeD6713(best.samples, Number(st.t||0));
+    var p=routePointAtDistance(routeCoords, ghostDistanceKm);
+    if(p){
+      if(!window.ghostMarkerD6713){
+        var el=document.createElement('div');
+        el.textContent='👻';
+        el.style.fontSize='22px';
+        el.style.filter='drop-shadow(0 2px 3px rgba(0,0,0,.35))';
+        el.style.opacity='0.85';
+        window.ghostMarkerD6713=new maplibregl.Marker({element:el}).setLngLat(p).addTo(map);
+      }else{
+        ghostMarkerD6713.setLngLat(p);
+      }
+    }
+    var ghostTimeAtTraveled=interpTimeAtDistanceD6713(best.samples, Number(traveledKm||0));
+    var deltaSec=Number(st.t||0)-ghostTimeAtTraveled;
+    if(line && text){
+      line.style.display='';
+      var sign= deltaSec<=0 ? '-' : '+';
+      text.textContent=sign+Math.abs(deltaSec).toFixed(1)+'秒';
+      text.className = deltaSec<=0 ? 'ahead' : 'behind';
+    }
+  };
+  window.finalizeGhostBestD6713=function(routeId, finishTimeSec){
+    var best=loadBestD6713(routeId);
+    var samples=Array.isArray(st.currentRunSamplesD6713)?st.currentRunSamplesD6713.slice():[];
+    if(!best || finishTimeSec<best.bestTimeSec){
+      saveBestD6713(routeId, finishTimeSec, samples);
+      st.newBestThisRunD6713=true;
+    }else{
+      st.newBestThisRunD6713=false;
+    }
+  };
 })();
 </script>
 </body>

@@ -7201,6 +7201,9 @@ html,body,.phone,button,input,textarea,select{
 <button type="button" id="debugAdvance1kmBtn">+1km</button>
 <button type="button" id="debugFinishBtn">ゴールまで一気に</button>
 </div>
+<div class="dev-test-buttons" style="margin-top:6px">
+<button type="button" id="debugAutoPlayBtn" style="flex:2;background:#ecfdf5;border-color:#059669;color:#065f46;">▶️ 自動再生でテスト（40km/h相当）</button>
+</div>
 </div>
 <div class="ride-control-dock">
 <div class="map-control-row">
@@ -14499,15 +14502,13 @@ setTimeout(syncRestoredRideUiD6672,80);
   };
 
   // 開発テスト用：自転車を漕がずにルートを進める（本番の計算経路をそのまま再利用）
-  window.debugAdvanceRouteD6714=function(deltaKm){
+  window.debugAdvanceRouteAtSpeedD6714=function(deltaKm, dt, assumedKmh){
     if(!st.activeRouteId || st.myRouteRideState==='complete') return;
     if(st.myRouteRideState!=='riding' && typeof startMyRouteRide==='function') startMyRouteRide();
     var total=(typeof getActiveRouteTotalKm==='function') ? getActiveRouteTotalKm() : Number(st.activeRouteDistanceKm||0.01);
     var before=Number(st.sess||0);
     var after=Math.min(total, before+Number(deltaKm||0));
     var moved=Math.max(0, after-before);
-    var assumedKmh=20;
-    var dt = moved>0 ? (moved/assumedKmh*3600) : 1;
     st.sess=after;
     st.t=Number(st.t||0)+dt;
     if(typeof computeCalAddD6710==='function'){
@@ -14535,6 +14536,14 @@ setTimeout(syncRestoredRideUiD6672,80);
     }
     if(typeof renderUI==='function') renderUI();
   };
+  window.debugAdvanceRouteD6714=function(deltaKm){
+    var assumedKmh=20;
+    var total=(typeof getActiveRouteTotalKm==='function') ? getActiveRouteTotalKm() : Number(st.activeRouteDistanceKm||0.01);
+    var before=Number(st.sess||0);
+    var moved=Math.max(0, Math.min(total, before+Number(deltaKm||0))-before);
+    var dt = moved>0 ? (moved/assumedKmh*3600) : 1;
+    debugAdvanceRouteAtSpeedD6714(deltaKm, dt, assumedKmh);
+  };
   document.addEventListener('click', function(e){
     var t=e.target;
     var b1=t.closest && t.closest('#debugAdvance200Btn');
@@ -14542,9 +14551,38 @@ setTimeout(syncRestoredRideUiD6672,80);
     var b3=t.closest && t.closest('#debugFinishBtn');
     if(!b1 && !b2 && !b3) return;
     e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if(window.__jrAutoPlayTimerD6714){ clearInterval(window.__jrAutoPlayTimerD6714); window.__jrAutoPlayTimerD6714=null; }
     if(b1){ debugAdvanceRouteD6714(0.2); return; }
     if(b2){ debugAdvanceRouteD6714(1.0); return; }
     if(b3){ debugAdvanceRouteD6714(9999); return; }
+  }, true);
+
+  // ▶️ 自動再生：実際のティック処理を一定間隔で繰り返し、地図上でゴースト/自分のマーカーが
+  // 本当に滑らかに動いているかを目視確認できるようにする（速度は固定40km/h相当）。
+  window.__jrAutoPlayTimerD6714=null;
+  function stopAutoPlayD6714(){
+    if(window.__jrAutoPlayTimerD6714){ clearInterval(window.__jrAutoPlayTimerD6714); window.__jrAutoPlayTimerD6714=null; }
+    var btn=document.getElementById('debugAutoPlayBtn');
+    if(btn){ btn.textContent='▶️ 自動再生でテスト（40km/h相当）'; btn.style.background='#ecfdf5'; }
+  }
+  function startAutoPlayD6714(){
+    if(!st.activeRouteId) return;
+    var btn=document.getElementById('debugAutoPlayBtn');
+    if(btn){ btn.textContent='⏸ 停止する'; btn.style.background='#fee2e2'; }
+    window.__jrAutoPlayTimerD6714=setInterval(function(){
+      if(!st.activeRouteId || st.myRouteRideState==='complete'){ stopAutoPlayD6714(); return; }
+      var assumedKmh=40;
+      var dtSec=0.2;
+      var deltaKm=assumedKmh*dtSec/3600;
+      debugAdvanceRouteAtSpeedD6714(deltaKm, dtSec, assumedKmh);
+    }, 200);
+  }
+  document.addEventListener('click', function(e){
+    var t=e.target.closest && e.target.closest('#debugAutoPlayBtn');
+    if(!t) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if(window.__jrAutoPlayTimerD6714) stopAutoPlayD6714();
+    else startAutoPlayD6714();
   }, true);
 })();
 </script>

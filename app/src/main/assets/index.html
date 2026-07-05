@@ -1684,6 +1684,34 @@
 }
 .myroute-ghost-line b.ahead{ color:#059669; }
 .myroute-ghost-line b.behind{ color:#dc2626; }
+.dev-test-row{
+  margin-top:10px;
+  border:1.5px dashed #d1d5db;
+  border-radius:14px;
+  padding:8px 9px;
+  background:rgba(255,255,255,.6);
+}
+.dev-test-row small{
+  display:block;
+  font-size:9.5px;
+  color:#9ca3af;
+  font-weight:800;
+  margin-bottom:6px;
+}
+.dev-test-buttons{
+  display:flex;
+  gap:6px;
+}
+.dev-test-buttons button{
+  flex:1;
+  padding:7px 4px;
+  border-radius:10px;
+  border:1px dashed #9ca3af;
+  background:#f9fafb;
+  color:#4b5563;
+  font-size:11px;
+  font-weight:800;
+}
 #myRouteNextRemain{
   margin-left:4px;
   color:#12895b;
@@ -7132,6 +7160,14 @@ html,body,.phone,button,input,textarea,select{
 <div class="myroute-ghost-line" id="ghostDeltaLine" style="display:none">
 <small>👻 自己ベストとの差</small>
 <b id="ghostDeltaText">-</b>
+</div>
+<div class="dev-test-row" id="devTestRow">
+<small>🧪 開発テスト用（自転車を漕がずに進める）</small>
+<div class="dev-test-buttons">
+<button type="button" id="debugAdvance200Btn">+200m</button>
+<button type="button" id="debugAdvance1kmBtn">+1km</button>
+<button type="button" id="debugFinishBtn">ゴールまで一気に</button>
+</div>
 </div>
 </div>
 <div class="progress"><div class="base"></div><div class="fill" id="fill"></div><div id="dots"></div><div class="bike" id="bike"></div></div>
@@ -14450,6 +14486,50 @@ setTimeout(syncRestoredRideUiD6672,80);
       st.newBestThisRunD6713=false;
     }
   };
+
+  // 開発テスト用：自転車を漕がずにルートを進める（本番の計算経路をそのまま再利用）
+  window.debugAdvanceRouteD6714=function(deltaKm){
+    if(!st.activeRouteId || st.myRouteRideState==='complete') return;
+    if(st.myRouteRideState!=='riding' && typeof startMyRouteRide==='function') startMyRouteRide();
+    var total=(typeof getActiveRouteTotalKm==='function') ? getActiveRouteTotalKm() : Number(st.activeRouteDistanceKm||0.01);
+    var before=Number(st.sess||0);
+    var after=Math.min(total, before+Number(deltaKm||0));
+    var moved=Math.max(0, after-before);
+    var assumedKmh=20;
+    var dt = moved>0 ? (moved/assumedKmh*3600) : 1;
+    st.sess=after;
+    st.t=Number(st.t||0)+dt;
+    if(typeof computeCalAddD6710==='function'){
+      st.activeRideSessionCal=Number(st.activeRideSessionCal||0)+computeCalAddD6710(moved, dt, assumedKmh);
+    }
+    st.activeRideMaxSpeed=Math.max(Number(st.activeRideMaxSpeed||0),assumedKmh);
+    if(typeof accumulateRideStatsD6711==='function') accumulateRideStatsD6711(assumedKmh, dt, after);
+    if(typeof accumulateGhostSamplesD6713==='function') accumulateGhostSamplesD6713(after, st.t);
+    if(typeof updateSmoothRouteMapPosition==='function') updateSmoothRouteMapPosition(false);
+    if(after>=total-0.00001 && !st.resultShown){
+      st.sess=total;
+      st.myRouteRideState='complete';
+      st.running=false;
+      st.resultShown=true;
+      if(typeof finalizeGhostBestD6713==='function') finalizeGhostBestD6713(st.activeRouteId, st.t);
+      var phone=document.querySelector('.phone');
+      if(phone){
+        phone.classList.remove('my-route-ready','my-route-riding','my-route-paused');
+        phone.classList.add('my-route-complete');
+      }
+      if(typeof updateSmoothRouteMapPosition==='function') updateSmoothRouteMapPosition(true);
+      if(typeof renderUI==='function') renderUI();
+      setTimeout(function(){ if(typeof openRideResultModal==='function') openRideResultModal(); },200);
+      return;
+    }
+    if(typeof renderUI==='function') renderUI();
+  };
+  document.addEventListener('click', function(e){
+    var t=e.target;
+    if(t.closest && t.closest('#debugAdvance200Btn')){ debugAdvanceRouteD6714(0.2); return; }
+    if(t.closest && t.closest('#debugAdvance1kmBtn')){ debugAdvanceRouteD6714(1.0); return; }
+    if(t.closest && t.closest('#debugFinishBtn')){ debugAdvanceRouteD6714(9999); return; }
+  });
 })();
 </script>
 </body>

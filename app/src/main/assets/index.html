@@ -7415,30 +7415,7 @@ function updateRouteProgressOnMap(){
    if(p) marker.setLngLat(p);
  }
 }
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- st.sess=0;
- st.t=0;
- document.querySelector('.phone').classList.add('my-route-active');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート走行中';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- renderUI();
- updateRouteProgressOnMap();
-}
 
-function clearActiveRoute(){
- st.activeRouteId=null;
- st.activeRouteName='';
- st.activeRouteDistanceKm=0;
- st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
- document.querySelector('.phone').classList.remove('my-route-active');
- if($('heroEyebrow')) $('heroEyebrow').textContent='次の名所';
- if($('landmarkTitle')) $('landmarkTitle').textContent='名古屋城';
- updateMainRouteOnMap();
- renderUI();
-}
 function confirmClearActiveRoute(){
  if(!st.activeRouteId) return;
  const ok=confirm('マイルート走行を終了して、日本一周ルートに戻しますか？');
@@ -7841,57 +7818,10 @@ function ensureDraftRouteLayer(){
    }, beforeId);
  }
 }
-function renderDraftRoute(){
- if(!map || !map.isStyleLoaded()) return;
- ensureDraftRouteLayer();
- const features=[];
- if(st.draftRoute && st.draftRoute.length>=2){
-   features.push({type:'Feature',geometry:{type:'LineString',coordinates:st.draftRoute},properties:{}});
- }
- const src=map.getSource('draft-route');
- if(src) src.setData({type:'FeatureCollection',features});
- draftMarkers.forEach(m=>m.remove());
- draftMarkers=[];
- (st.draftRoute||[]).forEach((p,i)=>{
-   const el=document.createElement('div');
-   el.className='draft-point-marker';
-   el.title=String(i+1);
-   draftMarkers.push(new maplibregl.Marker({element:el}).setLngLat(p).addTo(map));
- });
- updateDraftStats();
-}
 function updateDraftStats(){
  const pts=st.draftRoute||[];
  if($('draftPointCount')) $('draftPointCount').textContent=pts.length;
  if($('draftDistance')) $('draftDistance').textContent=routeDistanceKm(pts).toFixed(2)+'km';
-}
-function startRouteEdit(){
- if(!map || !map.isStyleLoaded()) return;
- st.routeEdit=true;
- st.draftRoute=[];
- document.querySelector('.phone').classList.add('route-editing');
- setDisplay('maponly');
- if($('routeNameInput')) $('routeNameInput').value='';
- setRouteTip('地図をタップしてルート点を追加');
- ensureDraftRouteLayer();
- bindDraftPointLayerEvents();
- renderDraftRoute();
- if($('mapToolsPanel')) $('mapToolsPanel').classList.add('open');
- setTimeout(()=>map.resize(),80);
-}
-function exitRouteEdit(){
- st.routeEdit=false;
- document.querySelector('.phone').classList.remove('route-editing');
- st.draftRoute=[];
- renderDraftRoute();
- setDisplay('detail');
- renderMyRoutes();
-}
-function addDraftPoint(lngLat){
- if(!st.routeEdit) return;
- st.draftRoute=st.draftRoute||[];
- st.draftRoute.push([Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))]);
- renderDraftRoute();
 }
 function undoDraftPoint(){
  if(!st.routeEdit) return;
@@ -8090,90 +8020,11 @@ function ensureDraftRouteLayer(){
    }, beforeId);
  }
 }
-function renderDraftRoute(){
- if(!map || !map.isStyleLoaded()) return;
- ensureDraftRouteLayer();
- const route=st.draftRoute||[];
- const features=[];
- if(route.length>=2){
-   features.push({type:'Feature',geometry:{type:'LineString',coordinates:route},properties:{}});
- }
- const src=map.getSource('draft-route');
- if(src) src.setData({type:'FeatureCollection',features});
- draftMarkers.forEach(m=>m.remove());
- draftMarkers=[];
- const pts=getDraftWaypoints();
- pts.forEach((p,i)=>{
-   const el=document.createElement('div');
-   el.className='draft-point-marker'+(st.selectedDraftIndex===i?' selected':'');
-   el.dataset.index=String(i+1);
-   el.title=(i+1)+'番の点';
-   el.addEventListener('click',ev=>{
-     ev.stopPropagation();
-     selectDraftPoint(i);
-   });
-   const markerObj=new maplibregl.Marker({element:el,draggable:true}).setLngLat(p).addTo(map);
-   markerObj.on('dragstart',()=>{st.selectedDraftIndex=i;});
-   markerObj.on('dragend',()=>{
-     const ll=markerObj.getLngLat();
-     const ptsNow=getDraftWaypoints();
-     ptsNow[i]=[Number(ll.lng.toFixed(6)),Number(ll.lat.toFixed(6))];
-     st.selectedDraftIndex=i;
-     st.routeSnapped=false;
-     st.draftRoute=ptsNow.slice();
-     renderDraftRoute();
-     setRouteTip(`${i+1}番の点を移動しました。必要なら点を動かして調整してください`,'editing');
-   });
-   draftMarkers.push(markerObj);
- });
- updateDraftStats();
-}
 function updateDraftStats(){
  const pts=getDraftWaypoints();
  const route=st.draftRoute||pts;
  if($('draftPointCount')) $('draftPointCount').textContent=pts.length;
  if($('draftDistance')) $('draftDistance').textContent=routeDistanceKm(route).toFixed(2)+'km';
-}
-function startRouteEdit(){
- if(!map || !map.isStyleLoaded()) return;
- st.routeEdit=true;
- st.editingRouteId=null;
- setRouteEditorTitle('マイルート作成');
- st.draftWaypoints=[];
- st.draftRoute=[];
- st.routeSnapped=false;
- st.selectedDraftIndex=-1;
- document.querySelector('.phone').classList.add('route-editing');
- setDisplay('maponly');
- if($('routeNameInput')) $('routeNameInput').value='';
- setRouteTip('地図をタップしてルート点を追加。点はあとからドラッグで移動できます。');
- ensureDraftRouteLayer();
- bindDraftPointLayerEvents();
- renderDraftRoute();
- if($('mapToolsPanel')) $('mapToolsPanel').classList.add('open');
- setTimeout(()=>map.resize(),80);
-}
-function exitRouteEdit(){
- st.routeEdit=false;
- document.querySelector('.phone').classList.remove('route-editing');
- st.draftWaypoints=[];
- st.draftRoute=[];
- st.routeSnapped=false;
- st.selectedDraftIndex=-1;
- renderDraftRoute();
- setDisplay('detail');
- renderMyRoutes();
-}
-function addDraftPoint(lngLat){
- if(!st.routeEdit) return;
- const pts=getDraftWaypoints();
- pushRouteHistory();
- pts.push([Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))]);
- st.selectedDraftIndex=pts.length-1;
- st.routeSnapped=false;
- st.draftRoute=pts.slice();
- renderDraftRoute();
- setRouteTip('点を追加しました。大まかに置いた後、点を動かして調整できます。','editing');
 }
 function undoDraftPoint(){
  if(!st.routeEdit) return;
@@ -8310,111 +8161,12 @@ function ensureDraftRouteLayer(){
    }, beforeId);
  }
 }
-function renderDraftRoute(){
- if(!map || !map.isStyleLoaded()) return;
- ensureDraftRouteLayer();
-
- const waypoints=getDraftWaypoints();
- const actualRoute=(st.routeSnapped && st.draftRoute && st.draftRoute.length>=2) ? st.draftRoute : waypoints;
-
- const routeFeatures=[];
- if(actualRoute && actualRoute.length>=2){
-   routeFeatures.push({type:'Feature',geometry:{type:'LineString',coordinates:actualRoute},properties:{}});
- }
- const guideFeatures=[];
- if(st.routeSnapped && waypoints && waypoints.length>=2){
-   guideFeatures.push({type:'Feature',geometry:{type:'LineString',coordinates:waypoints},properties:{}});
- }
-
- const routeSrc=map.getSource('draft-route');
- if(routeSrc) routeSrc.setData({type:'FeatureCollection',features:routeFeatures});
- const guideSrc=map.getSource('draft-guide');
- if(guideSrc) guideSrc.setData({type:'FeatureCollection',features:guideFeatures});
-
- try{
-   map.setPaintProperty('draft-route-line','line-color',st.routeSnapped?'#16B978':'#ff5872');
-   map.setPaintProperty('draft-route-line','line-width',st.routeSnapped?7:6);
-   map.setPaintProperty('draft-route-line','line-opacity',st.routeSnapped?0.96:0.90);
-   map.setPaintProperty('draft-guide-line','line-opacity',st.routeSnapped?0.42:0);
- }catch(e){}
-
- draftMarkers.forEach(m=>m.remove());
- draftMarkers=[];
- waypoints.forEach((p,i)=>{
-   const el=document.createElement('div');
-   el.className='draft-point-marker'+(st.selectedDraftIndex===i?' selected':'');
-   el.dataset.index=String(i+1);
-   el.title=(i+1)+'番の編集点';
-   el.addEventListener('click',ev=>{
-     ev.stopPropagation();
-     selectDraftPoint(i);
-   });
-   const markerObj=new maplibregl.Marker({element:el,draggable:true}).setLngLat(p).addTo(map);
-   markerObj.on('dragstart',()=>{st.selectedDraftIndex=i;});
-   markerObj.on('dragend',()=>{
-     const ll=markerObj.getLngLat();
-     const ptsNow=getDraftWaypoints();
-     ptsNow[i]=[Number(ll.lng.toFixed(6)),Number(ll.lat.toFixed(6))];
-     st.selectedDraftIndex=i;
-     st.routeSnapped=false;
-     st.draftRoute=ptsNow.slice();
-     renderDraftRoute();
-     setRouteTip(`${i+1}番の点を移動しました。必要なら点を動かして調整してください`,'editing');
-   });
-   draftMarkers.push(markerObj);
- });
- updateDraftStats();
- updateRouteMiniSummary();
- updateUndoButton();
-}
 function updateDraftStats(){
  const pts=getDraftWaypoints();
  const route=(st.draftRoute&&st.draftRoute.length?st.draftRoute:pts);
  if($('draftPointCount')) $('draftPointCount').textContent=pts.length;
  if($('draftDistance')) $('draftDistance').textContent=routeDistanceKm(route).toFixed(2)+'km';
  updateRouteMiniSummary();
-}
-function startRouteEdit(){
- if(!map || !map.isStyleLoaded()) return;
- st.routeEdit=true;
- st.draftWaypoints=[];
- st.draftRoute=[];
- st.routeSnapped=false;
- st.selectedDraftIndex=-1;
- document.querySelector('.phone').classList.add('route-editing');
- document.querySelector('.phone').classList.remove('route-editor-collapsed');
- setDisplay('maponly');
- if($('routeNameInput')) $('routeNameInput').value='';
- setRouteTip('地図タップで点追加。点タップで選択、点ドラッグで移動。');
- ensureDraftRouteLayer();
- bindDraftPointLayerEvents();
- renderDraftRoute();
- if($('mapToolsPanel')) $('mapToolsPanel').classList.add('open');
- setTimeout(()=>map.resize(),80);
-}
-function exitRouteEdit(){
- st.routeEdit=false;
- const phone=document.querySelector('.phone');
- phone.classList.remove('route-editing');
- phone.classList.remove('route-editor-collapsed');
- st.draftWaypoints=[];
- st.draftRoute=[];
- st.routeSnapped=false;
- st.selectedDraftIndex=-1;
- renderDraftRoute();
- setDisplay('detail');
- renderMyRoutes();
-}
-function addDraftPoint(lngLat){
- if(!st.routeEdit) return;
- const pts=getDraftWaypoints();
- pushRouteHistory();
- pts.push([Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))]);
- st.selectedDraftIndex=pts.length-1;
- st.routeSnapped=false;
- st.draftRoute=pts.slice();
- renderDraftRoute();
- setRouteTip('点を追加しました。大まかに置いた後、点を動かして調整できます。','editing');
 }
 function undoDraftPoint(){
  if(!st.routeEdit) return;
@@ -8529,52 +8281,6 @@ function ensureDraftRouteLayer(){
    });
  }
 }
-function renderDraftRoute(){
- if(!map || !map.isStyleLoaded()) return;
- ensureDraftRouteLayer();
-
- // Clear any old HTML marker objects from D66-10/11.
- draftMarkers.forEach(m=>{try{m.remove()}catch(e){}});
- draftMarkers=[];
-
- const waypoints=getDraftWaypoints();
- const actualRoute=(st.routeSnapped && st.draftRoute && st.draftRoute.length>=2) ? st.draftRoute : waypoints;
-
- const routeFeatures=[];
- if(actualRoute && actualRoute.length>=2){
-   routeFeatures.push({type:'Feature',geometry:{type:'LineString',coordinates:actualRoute},properties:{}});
- }
-
- const guideFeatures=[];
- if(st.routeSnapped && waypoints && waypoints.length>=2){
-   guideFeatures.push({type:'Feature',geometry:{type:'LineString',coordinates:waypoints},properties:{}});
- }
-
- const pointFeatures=waypoints.map((p,i)=>({
-   type:'Feature',
-   geometry:{type:'Point',coordinates:p},
-   properties:{idx:i,indexLabel:i+1,selected:st.selectedDraftIndex===i}
- }));
-
- const routeSrc=map.getSource('draft-route');
- if(routeSrc) routeSrc.setData({type:'FeatureCollection',features:routeFeatures});
-
- const guideSrc=map.getSource('draft-guide');
- if(guideSrc) guideSrc.setData({type:'FeatureCollection',features:guideFeatures});
-
- const pointSrc=map.getSource('draft-points');
- if(pointSrc) pointSrc.setData({type:'FeatureCollection',features:pointFeatures});
-
- try{
-   map.setPaintProperty('draft-route-line','line-color',st.routeSnapped?'#16B978':'#ff5872');
-   map.setPaintProperty('draft-route-line','line-width',st.routeSnapped?7:6);
-   map.setPaintProperty('draft-route-line','line-opacity',st.routeSnapped?0.96:0.90);
-   map.setPaintProperty('draft-guide-line','line-opacity',st.routeSnapped?0.42:0);
- }catch(e){}
-
- updateDraftStats();
- updateRouteMiniSummary();
-}
 function selectDraftPoint(index){
  const pts=getDraftWaypoints();
  if(index<0 || index>=pts.length) return;
@@ -8587,35 +8293,6 @@ function selectDraftPoint(index){
  st.selectedDraftIndex=index;
  renderDraftRoute();
  setRouteTip(`${index+1}番の点を選択中。地図の別の場所をタップすると、その点を移動します。`,'layer-editing');
-}
-function addDraftPoint(lngLat){
- if(!st.routeEdit) return;
-
- // When tapping an existing point, layer click handler sets this flag.
- if(st.ignoreNextMapTap){
-   st.ignoreNextMapTap=false;
-   return;
- }
-
- const pts=getDraftWaypoints();
-
- // If a point is selected, the next map tap moves it instead of adding a new point.
- if(Number.isInteger(st.selectedDraftIndex) && st.selectedDraftIndex>=0 && st.selectedDraftIndex<pts.length){
-   const i=st.selectedDraftIndex;
-   pts[i]=[Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))];
-   st.routeSnapped=false;
-   st.draftRoute=pts.slice();
-   renderDraftRoute();
-   setRouteTip(`${i+1}番の点を移動しました。必要なら点を動かして調整してください。選択点をもう一度タップで解除できます。`,'layer-editing');
-   return;
- }
-
- pts.push([Number(lngLat.lng.toFixed(6)), Number(lngLat.lat.toFixed(6))]);
- st.selectedDraftIndex=pts.length-1;
- st.routeSnapped=false;
- st.draftRoute=pts.slice();
- renderDraftRoute();
- setRouteTip('点を追加しました。選択点をもう一度タップで解除。大まかに置いた後、点を動かして調整できます。','layer-editing');
 }
 function bindDraftPointLayerEvents(){
  if(!map || map.__draftPointEventsBound) return;
@@ -8655,47 +8332,6 @@ function setMainRideRouteVisible(show){
      if(map.getLayer(id)) map.setLayoutProperty(id,'visibility',show?'visible':'none');
    }catch(e){}
  });
-}
-function startRouteEdit(){
- if(!map || !map.isStyleLoaded()) return;
- st.routeEdit=true;
- st.draftWaypoints=[];
- st.draftRoute=[];
- st.routeSnapped=false;
- st.selectedDraftIndex=-1;
- st.draggingDraftIndex=-1;
- st.ignoreNextMapTap=false;
- st.editingRouteId=null;
- setRouteEditorTitle('マイルート作成');
- clearRouteHistory();
- document.querySelector('.phone').classList.add('route-editing');
- document.querySelector('.phone').classList.remove('route-editor-collapsed');
- setDisplay('maponly');
- setMainRideRouteVisible(false);
- if($('routeNameInput')) $('routeNameInput').value='';
- setRouteTip('地図タップで点追加。点タップで選択、点ドラッグで移動。');
- ensureDraftRouteLayer();
- bindDraftPointLayerEvents();
- renderDraftRoute();
- if($('mapToolsPanel')) $('mapToolsPanel').classList.add('open');
- setTimeout(()=>map.resize(),80);
-}
-function exitRouteEdit(){
- st.routeEdit=false;
- const phone=document.querySelector('.phone');
- phone.classList.remove('route-editing');
- phone.classList.remove('route-editor-collapsed');
- st.draftWaypoints=[];
- st.draftRoute=[];
- st.routeSnapped=false;
- st.selectedDraftIndex=-1;
- st.draggingDraftIndex=-1;
- st.ignoreNextMapTap=false;
- clearRouteHistory();
- renderDraftRoute();
- setMainRideRouteVisible(true);
- setDisplay('detail');
- renderMyRoutes();
 }
 function addDraftPoint(lngLat){
  if(!st.routeEdit) return;
@@ -9686,32 +9322,6 @@ function updateRouteProgressOnMap(){
  }
  updateActiveCheckpointLayer();
 }
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- st.activeRouteCheckpoints=normalizeCheckpoints(route.checkpoints||[], route.waypoints||route.points||[]);
- st.sess=0;
- st.t=0;
- document.querySelector('.phone').classList.add('my-route-active');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート走行中';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- renderUI();
- updateRouteProgressOnMap();
-}
-function clearActiveRoute(){
- st.activeRouteId=null;
- st.activeRouteName='';
- st.activeRouteDistanceKm=0;
- st.activeRouteCheckpoints=[];
- st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
- document.querySelector('.phone').classList.remove('my-route-active');
- if($('heroEyebrow')) $('heroEyebrow').textContent='次の名所';
- if($('landmarkTitle')) $('landmarkTitle').textContent='名古屋城';
- updateMainRouteOnMap();
- updateActiveCheckpointLayer();
- renderUI();
-}
 function useMyRoute(id, closePage=true){
  const routes=loadMyRoutes();
  const route=routes.find(r=>String(r.id)===String(id));
@@ -10093,62 +9703,6 @@ function renderUI(){
  updateRunButton();
  updateRouteProgressOnMap();
 }
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- const basePts=(route.waypoints && route.waypoints.length) ? route.waypoints : (route.points||[]);
- st.activeRouteCheckpoints=normalizeCheckpoints(route.checkpoints||[], basePts).map(cp=>({
-   ...cp,
-   distanceKm:distanceAtIndex(basePts, cp.index)
- }));
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='ready';
- st.running=false;
- st.sess=0;
- st.t=0;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- const phone=document.querySelector('.phone');
- phone.classList.add('my-route-active','my-route-ready');
- phone.classList.remove('my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート確認';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- renderUI();
- updateRouteProgressOnMap();
-}
-function clearActiveRoute(){
- st.activeRouteId=null;
- st.activeRouteName='';
- st.activeRouteDistanceKm=0;
- st.activeRouteCheckpoints=[];
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='';
- st.running=true;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-active','my-route-ready','my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='次の名所';
- if($('landmarkTitle')) $('landmarkTitle').textContent='名古屋城';
- updateMainRouteOnMap();
- updateActiveCheckpointLayer();
- renderUI();
-}
-function startMyRouteRide(){
- if(!st.activeRouteId) return;
- st.myRouteRideState='riding';
- st.running=true;
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-ready','my-route-paused','my-route-complete');
- phone.classList.add('my-route-riding');
- renderUI();
-}
 function pauseMyRouteRide(){
  if(!st.activeRouteId) return;
  st.myRouteRideState='paused';
@@ -10243,66 +9797,12 @@ function getActiveRouteTotalKm(){
 function getActiveRouteTraveledKm(){
  return Math.min(Math.max(0,Number(st.sess||0)), getActiveRouteTotalKm());
 }
-function updateSmoothRouteMapPosition(forceLine=false){
- if(!map || !map.isStyleLoaded() || !st.route || !st.route.length) return;
- const active=!!st.activeRouteId;
- let traveled=0;
- if(active){
-   traveled=getActiveRouteTraveledKm();
- }else{
-   // 日本一周の本線はCP距離と地図線距離が別スケールなので、ここでは地図追従しない
-   return;
- }
- const p=routePointAtDistance(st.route,traveled);
- if(p && marker) marker.setLngLat(p);
- const now=performance.now();
- if(forceLine || !st.lastSmoothLineAt || now-st.lastSmoothLineAt>120){
-   ensureRouteProgressLayer();
-   const src=map.getSource('route-progress');
-   if(src){
-     const coords=routeSliceToDistance(st.route,traveled);
-     src.setData({type:'Feature',geometry:{type:'LineString',coordinates:coords}});
-   }
-   if(typeof updateActiveCheckpointLayer==='function') updateActiveCheckpointLayer();
-   st.lastSmoothLineAt=now;
- }
- if(active && st.myRouteRideState==='riding' && st.autoFollowRoute!==false && p){
-   if(!st.lastAutoFollowAt || now-st.lastAutoFollowAt>90){
-     try{
-       map.jumpTo({
-         center:p,
-         zoom:Math.max(map.getZoom(),15.4),
-         pitch:Math.max(map.getPitch(),58),
-         bearing:map.getBearing()
-       });
-     }catch(e){}
-     st.lastAutoFollowAt=now;
-   }
- }
- const total=getActiveRouteTotalKm();
- const prog=Math.min(100,(traveled/total)*100);
- if($('fill')) $('fill').style.width=prog+'%';
- if($('bike')) $('bike').style.left=prog+'%';
-}
 function recenterToBike(){
  if(!map) return;
  st.autoFollowRoute=true;
  const active=!!st.activeRouteId;
  const p=active ? routePointAtDistance(st.route,getActiveRouteTraveledKm()) : (marker ? marker.getLngLat().toArray() : st.route[0]);
  if(p) map.easeTo({center:p,zoom:15.8,pitch:58,bearing:50,duration:360});
-}
-function startMyRouteRide(){
- if(!st.activeRouteId) return;
- st.myRouteRideState='riding';
- st.running=true;
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-ready','my-route-paused','my-route-complete');
- phone.classList.add('my-route-riding');
- renderUI();
- recenterToBike();
 }
 function pauseMyRouteRide(){
  if(!st.activeRouteId) return;
@@ -10313,56 +9813,6 @@ function pauseMyRouteRide(){
  phone.classList.add('my-route-paused');
  renderUI();
  updateSmoothRouteMapPosition(true);
-}
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- const basePts=(route.waypoints && route.waypoints.length) ? route.waypoints : (route.points||[]);
- st.activeRouteCheckpoints=normalizeCheckpoints(route.checkpoints||[], basePts).map(cp=>({
-   ...cp,
-   distanceKm:distanceAtIndex(basePts, cp.index)
- }));
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='ready';
- st.running=false;
- st.sess=0;
- st.t=0;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.add('my-route-active','my-route-ready');
- phone.classList.remove('my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート確認';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- renderUI();
- updateSmoothRouteMapPosition(true);
-}
-function clearActiveRoute(){
- st.activeRouteId=null;
- st.activeRouteName='';
- st.activeRouteDistanceKm=0;
- st.activeRouteCheckpoints=[];
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='';
- st.running=true;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-active','my-route-ready','my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='次の名所';
- if($('landmarkTitle')) $('landmarkTitle').textContent='名古屋城';
- updateMainRouteOnMap();
- renderUI();
 }
 function smoothRideFrame(ts){
  if(!st.lastSmoothFrameAt) st.lastSmoothFrameAt=ts;
@@ -10493,90 +9943,6 @@ function updateMainRouteOnMap(){
  showMainRouteLayers();
  styleMainRouteAsBlue();
  updateRouteProgressOnMap();
-}
-function updateSmoothRouteMapPosition(forceLine=false){
- if(!map || !map.isStyleLoaded() || !st.route || !st.route.length) return;
- const active=!!st.activeRouteId;
- if(!active) return;
- showMainRouteLayers();
- styleMainRouteAsBlue();
- const traveled=getActiveRouteTraveledKm();
- const p=routePointAtDistance(st.route,traveled);
- if(p && marker) marker.setLngLat(p);
- const now=performance.now();
- if(forceLine || !st.lastSmoothLineAt || now-st.lastSmoothLineAt>120){
-   ensureRouteProgressLayer();
-   const src=map.getSource('route-progress');
-   if(src){
-     const coords=routeSliceToDistance(st.route,traveled);
-     src.setData({type:'Feature',geometry:{type:'LineString',coordinates:coords}});
-   }
-   if(typeof updateActiveCheckpointLayer==='function') updateActiveCheckpointLayer();
-   st.lastSmoothLineAt=now;
- }
- if(active && st.myRouteRideState==='riding' && st.autoFollowRoute!==false && p){
-   if(!st.lastAutoFollowAt || now-st.lastAutoFollowAt>90){
-     try{
-       map.jumpTo({
-         center:p,
-         zoom:Math.max(map.getZoom(),15.4),
-         pitch:Math.max(map.getPitch(),58),
-         bearing:map.getBearing()
-       });
-     }catch(e){}
-     st.lastAutoFollowAt=now;
-   }
- }
- const total=getActiveRouteTotalKm();
- const prog=Math.min(100,(traveled/total)*100);
- if($('fill')) $('fill').style.width=prog+'%';
- if($('bike')) $('bike').style.left=prog+'%';
-}
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- const basePts=(route.waypoints && route.waypoints.length) ? route.waypoints : (route.points||[]);
- st.activeRouteCheckpoints=normalizeCheckpoints(route.checkpoints||[], basePts).map(cp=>({
-   ...cp,
-   distanceKm:distanceAtIndex(basePts, cp.index)
- }));
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='ready';
- st.running=false;
- st.sess=0;
- st.t=0;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.add('my-route-active','my-route-ready');
- phone.classList.remove('my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート確認';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- showMainRouteLayers();
- styleMainRouteAsBlue();
- renderUI();
- updateSmoothRouteMapPosition(true);
-}
-function startMyRouteRide(){
- if(!st.activeRouteId) return;
- st.myRouteRideState='riding';
- st.running=true;
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-ready','my-route-paused','my-route-complete');
- phone.classList.add('my-route-riding');
- showMainRouteLayers();
- styleMainRouteAsBlue();
- renderUI();
- recenterToBike();
 }
 
 
@@ -10729,107 +10095,6 @@ function updateRouteProgressOnMap(){
    if(p) marker.setLngLat(p);
  }
  if(typeof updateActiveCheckpointLayer==='function') updateActiveCheckpointLayer();
-}
-function updateSmoothRouteMapPosition(forceLine=false){
- if(!map || !map.isStyleLoaded() || !st.route || !st.route.length) return;
- const active=!!st.activeRouteId;
- if(!active) return;
- ensureAppRouteLayers();
- updateAppRouteBlue();
- const traveled=getActiveRouteTraveledKm();
- const p=routePointAtDistance(st.route,traveled);
- if(p && marker) marker.setLngLat(p);
- const now=performance.now();
- if(forceLine || !st.lastSmoothLineAt || now-st.lastSmoothLineAt>80){
-   updateAppRouteGreen(traveled);
-   if(typeof updateActiveCheckpointLayer==='function') updateActiveCheckpointLayer();
-   st.lastSmoothLineAt=now;
- }
- if(active && st.myRouteRideState==='riding' && st.autoFollowRoute!==false && p){
-   if(!st.lastAutoFollowAt || now-st.lastAutoFollowAt>90){
-     try{
-       map.jumpTo({
-         center:p,
-         zoom:Math.max(map.getZoom(),15.4),
-         pitch:Math.max(map.getPitch(),58),
-         bearing:map.getBearing()
-       });
-     }catch(e){}
-     st.lastAutoFollowAt=now;
-   }
- }
- const total=getActiveRouteTotalKm();
- const prog=Math.min(100,(traveled/total)*100);
- if($('fill')) $('fill').style.width=prog+'%';
- if($('bike')) $('bike').style.left=prog+'%';
-}
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- const basePts=(route.waypoints && route.waypoints.length) ? route.waypoints : (route.points||[]);
- st.activeRouteCheckpoints=normalizeCheckpoints(route.checkpoints||[], basePts).map(cp=>({
-   ...cp,
-   distanceKm:distanceAtIndex(basePts, cp.index)
- }));
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='ready';
- st.running=false;
- st.sess=0;
- st.t=0;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.add('my-route-active','my-route-ready');
- phone.classList.remove('my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート確認';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- updateAppRouteBlue();
- updateAppRouteGreen(0);
- renderUI();
- updateSmoothRouteMapPosition(true);
-}
-function startMyRouteRide(){
- if(!st.activeRouteId) return;
- st.myRouteRideState='riding';
- st.running=true;
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-ready','my-route-paused','my-route-complete');
- phone.classList.add('my-route-riding');
- updateAppRouteBlue();
- updateAppRouteGreen(getActiveRouteTraveledKm());
- renderUI();
- recenterToBike();
-}
-function clearActiveRoute(){
- st.activeRouteId=null;
- st.activeRouteName='';
- st.activeRouteDistanceKm=0;
- st.activeRouteCheckpoints=[];
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='';
- st.running=true;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-active','my-route-ready','my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='次の名所';
- if($('landmarkTitle')) $('landmarkTitle').textContent='名古屋城';
- updateAppRouteGreen(0);
- updateMainRouteOnMap();
- renderUI();
 }
 
 
@@ -11020,105 +10285,6 @@ function updateRouteProgressOnMap(){
  }
  if(typeof updateActiveCheckpointLayer==='function') updateActiveCheckpointLayer();
 }
-function updateSmoothRouteMapPosition(forceLine=false){
- if(!map || !map.isStyleLoaded() || !st.route || !st.route.length) return;
- const active=!!st.activeRouteId;
- if(!active) return;
- const traveled=getActiveRouteTraveledKm();
- const p=routePointAtDistance(st.route,traveled);
- if(p && marker) marker.setLngLat(p);
-
- const now=performance.now();
- if(forceLine || !st.lastSmoothLineAt || now-st.lastSmoothLineAt>70){
-   updateSplitRouteColors(traveled);
-   if(typeof updateActiveCheckpointLayer==='function') updateActiveCheckpointLayer();
-   st.lastSmoothLineAt=now;
- }
-
- if(active && st.myRouteRideState==='riding' && st.autoFollowRoute!==false && p){
-   if(!st.lastAutoFollowAt || now-st.lastAutoFollowAt>90){
-     try{
-       map.jumpTo({
-         center:p,
-         zoom:Math.max(map.getZoom(),15.4),
-         pitch:Math.max(map.getPitch(),58),
-         bearing:map.getBearing()
-       });
-     }catch(e){}
-     st.lastAutoFollowAt=now;
-   }
- }
-
- const total=getActiveRouteTotalKm();
- const prog=Math.min(100,(traveled/total)*100);
- if($('fill')) $('fill').style.width=prog+'%';
- if($('bike')) $('bike').style.left=prog+'%';
-}
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- const basePts=(route.waypoints && route.waypoints.length) ? route.waypoints : (route.points||[]);
- st.activeRouteCheckpoints=normalizeCheckpoints(route.checkpoints||[], basePts).map(cp=>({
-   ...cp,
-   distanceKm:distanceAtIndex(basePts, cp.index)
- }));
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='ready';
- st.running=false;
- st.sess=0;
- st.t=0;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.add('my-route-active','my-route-ready');
- phone.classList.remove('my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート確認';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- updateSplitRouteColors(0);
- renderUI();
- updateSmoothRouteMapPosition(true);
-}
-function startMyRouteRide(){
- if(!st.activeRouteId) return;
- st.myRouteRideState='riding';
- st.running=true;
- st.autoFollowRoute=true;
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-ready','my-route-paused','my-route-complete');
- phone.classList.add('my-route-riding');
- updateSplitRouteColors(getActiveRouteTraveledKm());
- renderUI();
- recenterToBike();
-}
-function clearActiveRoute(){
- st.activeRouteId=null;
- st.activeRouteName='';
- st.activeRouteDistanceKm=0;
- st.activeRouteCheckpoints=[];
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='';
- st.running=true;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- st.route=DEFAULT_MAIN_ROUTE.map(p=>[p[0],p[1]]);
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-active','my-route-ready','my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='次の名所';
- if($('landmarkTitle')) $('landmarkTitle').textContent='名古屋城';
- updateSplitRouteColors(0);
- renderUI();
-}
 
 
 /* D66-34 auto follow toggle
@@ -11152,52 +10318,6 @@ function recenterToBike(){
  const active=!!st.activeRouteId;
  const p=active ? routePointAtDistance(st.route,getActiveRouteTraveledKm()) : (marker ? marker.getLngLat().toArray() : st.route[0]);
  if(p) map.easeTo({center:p,zoom:15.8,pitch:58,bearing:50,duration:360});
-}
-function startMyRouteRide(){
- if(!st.activeRouteId) return;
- st.myRouteRideState='riding';
- st.running=true;
- if(st.autoFollowRoute==null) st.autoFollowRoute=true;
- syncAutoFollowButton();
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.remove('my-route-ready','my-route-paused','my-route-complete');
- phone.classList.add('my-route-riding');
- updateSplitRouteColors(getActiveRouteTraveledKm());
- renderUI();
- if(st.autoFollowRoute!==false) recenterToBike();
-}
-function setActiveRoute(route){
- st.activeRouteId=route.id;
- st.activeRouteName=route.name || 'マイルート';
- st.activeRouteDistanceKm=Number(route.distanceKm || routeDistanceKm(route.points||[]));
- const basePts=(route.waypoints && route.waypoints.length) ? route.waypoints : (route.points||[]);
- st.activeRouteCheckpoints=normalizeCheckpoints(route.checkpoints||[], basePts).map(cp=>({
-   ...cp,
-   distanceKm:distanceAtIndex(basePts, cp.index)
- }));
- st.reachedCheckpointKeys=[];
- st.pendingRideLog=null;
- st.resultShown=false;
- st.myRouteRideState='ready';
- st.running=false;
- st.sess=0;
- st.t=0;
- st.activeRideSessionCal=0;
- st.activeRideMaxSpeed=0; resetRideStatsD6711();
- st.autoFollowRoute=true;
- syncAutoFollowButton();
- st.lastSmoothFrameAt=0;
- st.lastUiRenderAt=0;
- const phone=document.querySelector('.phone');
- phone.classList.add('my-route-active','my-route-ready');
- phone.classList.remove('my-route-riding','my-route-paused','my-route-complete');
- if($('heroEyebrow')) $('heroEyebrow').textContent='マイルート確認';
- if($('landmarkTitle')) $('landmarkTitle').textContent=st.activeRouteName;
- updateSplitRouteColors(0);
- renderUI();
- updateSmoothRouteMapPosition(true);
 }
 function clearActiveRoute(){
  st.activeRouteId=null;
@@ -12015,6 +11135,9 @@ function handleSensorNotification(ev){
  }
 }
 function renderSensorDiagUI(){
+ // renderUserSensorSettings同様、ネイティブBLEブリッジ導入後はNativeBikeBridge側が
+ // 表示を担当するため、旧Web Bluetoothロジックのこの関数は無効化する。
+ if(window.NativeBikeBridge) return;
  const m=jrSensorDiag.metrics||{};
  const connected=!!(jrSensorDiag.device && jrSensorDiag.device.gatt && jrSensorDiag.device.gatt.connected);
  const status=$('sensorDiagStatus');
@@ -12753,6 +11876,11 @@ async function jrStartSensorServices(server){
  };
 })();
 function renderUserSensorSettings(){
+ // ネイティブBLEブリッジ導入後、ここの表示は完全にNativeBikeBridge側(sendBikeState→
+ // window.JapanRideNativeBikeUpdate)が担当する。この関数は旧Web Bluetooth時代の
+ // ロジックで、WebViewには存在しないjrSensorDiag.deviceを見て「未登録」を書き込んで
+ // しまい、ネイティブ側の正しい表示と奪い合って点滅する原因になっていたため無効化する。
+ if(window.NativeBikeBridge) return;
  const connected=!!(jrSensorDiag.device && jrSensorDiag.device.gatt && jrSensorDiag.device.gatt.connected);
  const saved=getRegisteredSensorName();
  const name=jrSensorDiag.device?(jrSensorDiag.device.name||'名称なし'):(saved||'未登録');

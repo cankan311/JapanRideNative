@@ -1481,6 +1481,44 @@
 
 
 /* D66-24: マイルート走行中UIを日本一周UIから分離 */
+.ride-countdown-overlay{
+  position:fixed;
+  inset:0;
+  z-index:10060;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(17,24,39,.45);
+  backdrop-filter:blur(4px);
+}
+.ride-countdown-card{
+  background:#fff;
+  border-radius:26px;
+  padding:32px 28px;
+  min-width:220px;
+  text-align:center;
+  box-shadow:0 20px 50px rgba(0,0,0,.25);
+}
+.ride-countdown-title{
+  font-size:22px;
+  font-weight:1000;
+  color:#111827;
+  margin-bottom:18px;
+}
+.ride-countdown-title.number{
+  font-size:64px;
+  color:#16B978;
+  margin-bottom:0;
+}
+.ride-countdown-btn{
+  background:#16B978;
+  color:#fff;
+  border:none;
+  border-radius:999px;
+  padding:14px 32px;
+  font-size:16px;
+  font-weight:1000;
+}
 .myroute-ride-panel{
   display:none;
   margin-top:8px;
@@ -7155,6 +7193,12 @@ html,body,.phone,button,input,textarea,select{
 <div><small>時間</small><b id="heroStatTime">00:00</b></div>
 <div><small>距離</small><b><span id="heroStatDistance">0.00</span><em>km</em></b></div>
 </div>
+<div class="ride-countdown-overlay" id="rideCountdownOverlay" style="display:none">
+<div class="ride-countdown-card" id="rideCountdownCard">
+<div class="ride-countdown-title" id="rideCountdownTitle">準備はいい？</div>
+<button type="button" class="ride-countdown-btn" id="rideCountdownReadyBtn">はじめる</button>
+</div>
+</div>
 <div aria-hidden="true" class="myroute-ride-panel" id="myRouteRidePanel">
 <div class="myroute-big">
 <span id="myRouteDone">0.00</span><small> / <span id="myRouteTotal">0.00</span> km</small>
@@ -9320,7 +9364,8 @@ function pauseMyRouteRide(){
 function handleRunButton(){
  if(st.activeRouteId){
    if(st.myRouteRideState==='ready'){
-     startMyRouteRide();
+     if(typeof startRideWithCountdownD6716==='function') startRideWithCountdownD6716();
+     else startMyRouteRide();
    }else if(st.myRouteRideState==='paused'){
      startMyRouteRide();
    }else if(st.myRouteRideState==='complete'){
@@ -13133,6 +13178,36 @@ setTimeout(syncRestoredRideUiD6672,80);
     }else{
       st.newBestThisRunD6713=false;
     }
+  };
+
+  // D67-16: 「準備はいい？」→3-2-1カウントダウン→走行開始
+  window.startRideWithCountdownD6716=function(){
+    var overlay=document.getElementById('rideCountdownOverlay');
+    var title=document.getElementById('rideCountdownTitle');
+    var btn=document.getElementById('rideCountdownReadyBtn');
+    if(!overlay || !title || !btn){ startMyRouteRide(); return; }
+    title.className='ride-countdown-title';
+    title.textContent='準備はいい？';
+    btn.style.display='';
+    overlay.style.display='flex';
+    var onReady=function(){
+      btn.removeEventListener('click', onReady);
+      btn.style.display='none';
+      var n=3;
+      title.className='ride-countdown-title number';
+      title.textContent=String(n);
+      var timer=setInterval(function(){
+        n--;
+        if(n<=0){
+          clearInterval(timer);
+          overlay.style.display='none';
+          startMyRouteRide();
+          return;
+        }
+        title.textContent=String(n);
+      },700);
+    };
+    btn.addEventListener('click', onReady);
   };
 
   // 開発テスト用：自転車を漕がずにルートを進める（本番の計算経路をそのまま再利用）
